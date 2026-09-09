@@ -1,0 +1,16 @@
+/* File CSS Khusus Background Keseluruhan Sistem (Plug-and-Play Reusable)
+   Pengaturan background gradasi biru muda (#93C5FD) -> pink muda (#F9A8D4)
+   Berlaku untuk semua jenis user, semua menu & sub-menu. */
+
+:root {
+    --bg-grad-blue-light: #93C5FD;   /* Biru Muda */
+    --bg-grad-pink-light: #F9A8D4;   /* Pink Muda */
+    --bg-grad-white-soft: #FFFFFF;   /* Putih Netral */
+}
+
+/* Class Utama Wrapper Background Sistem */
+.app-background, body.app-background {
+    background: linear-gradient(135deg, rgba(147, 197, 253, 0.45) 0%, rgba(255, 255, 255, 0.95) 50%, rgba(249, 168, 212, 0.45) 100%) !important;
+    background-attachment: fixed !important;
+    min-height: 100vh;
+}

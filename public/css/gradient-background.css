@@ -1,0 +1,15 @@
+/* File CSS Khusus Background Gradasi (Biru Muda -> Pink Muda)
+   Dapat digunakan kembali (reusable) di project lain. */
+
+:root {
+    --bg-grad-blue-light: #93C5FD;   /* Biru Muda */
+    --bg-grad-pink-light: #F9A8D4;   /* Pink Muda */
+    --bg-grad-white-soft: #FFFFFF;   /* Putih Netral */
+}
+
+/* Reusable Class Utility untuk Background Utama */
+body, .bg-gradient-main {
+    background: linear-gradient(135deg, rgba(147, 197, 253, 0.45) 0%, rgba(255, 255, 255, 0.95) 50%, rgba(249, 168, 212, 0.45) 100%) !important;
+    background-attachment: fixed !important;
+    min-height: 100vh;
+}

@@ -1,0 +1,379 @@
+/* File CSS Khusus Tema Warna Sistem Aset & Magang / Sinosip */
+:root {
+    --color-primary: #3B82F6;       /* Biru Utama: Tombol, link, ikon */
+    --color-primary-hover: #2563EB; /* Biru Hover */
+    --color-primary-active: #1D4ED8;/* Biru Active */
+    --color-blue-light: #93C5FD;    /* Biru Muda: Background/gradasi */
+    --color-blue-subtle: #DBEAFE;   /* Biru Pastel */
+    --color-white: #FFFFFF;         /* Putih: Card & background */
+    --color-pink: #EC4899;          /* Pink: Aksen & CTA */
+    --color-pink-hover: #DB2777;    /* Pink Hover */
+    --color-pink-light: #F9A8D4;    /* Pink Muda: Background/gradasi */
+    --color-pink-subtle: #FCE7F3;   /* Pink Pastel */
+    --color-navy: #172554;          /* Navy: Judul & teks utama */
+    --color-navy-light: #1E3A8A;    /* Navy Muda */
+    --color-navy-subtle: #E0E7FF;   /* Navy Pastel */
+    --bg-grad-blue-light: #93C5FD;  /* Biru Muda */
+    --bg-grad-pink-light: #F9A8D4;  /* Pink Muda */
+    --bg-grad-white-soft: #FFFFFF;  /* Putih Netral */
+}
+
+/* Global Font Setting */
+body {
+    font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+/* 1. Background Sistem Utama (Plug-and-Play Reusable) */
+.app-background, body.app-background {
+    background: linear-gradient(135deg, rgba(147, 197, 253, 0.45) 0%, rgba(255, 255, 255, 0.95) 50%, rgba(249, 168, 212, 0.45) 100%) !important;
+    background-attachment: fixed !important;
+    min-height: 100vh;
+}
+
+/* 2. Sidebar Gradient (Rich Navy to Deep Blue) */
+.bg-sidebar-gradient {
+    background: linear-gradient(180deg, var(--color-navy) 0%, #1E3A8A 55%, #1E1B4B 100%) !important;
+    box-shadow: 4px 0 25px rgba(23, 37, 84, 0.18);
+}
+
+/* Sidebar Menu States */
+.sidebar-link {
+    color: rgba(226, 232, 240, 0.8) !important;
+    transition: all 0.2s ease-in-out;
+}
+
+.sidebar-link:hover {
+    color: #FFFFFF !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    transform: translateX(3px);
+}
+
+.sidebar-link-active {
+    color: #FFFFFF !important;
+    background: linear-gradient(90deg, rgba(59, 130, 246, 0.35) 0%, rgba(236, 72, 153, 0.18) 100%) !important;
+    border-left: 3.5px solid #3B82F6 !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 12px rgba(23, 37, 84, 0.25);
+}
+
+/* 3. Card Components Styling (Enhanced Soft Shadow, Clean Border & Hover Effects) */
+.bg-card-gradient, .card-soft {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(239, 246, 255, 0.65) 50%, rgba(253, 242, 248, 0.65) 100%) !important;
+    border: 1px solid rgba(147, 197, 253, 0.45) !important;
+    border-radius: 1.5rem !important;
+    box-shadow: 0 10px 25px -5px rgba(23, 37, 84, 0.07), 0 4px 12px -2px rgba(23, 37, 84, 0.03);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-interactive {
+    cursor: pointer;
+}
+
+.card-interactive:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 32px -6px rgba(59, 130, 246, 0.15), 0 8px 16px -4px rgba(236, 72, 153, 0.1);
+    border-color: rgba(59, 130, 246, 0.6) !important;
+}
+
+/* 4. Modal Container Gradient */
+.bg-modal-gradient {
+    background: linear-gradient(145deg, #FFFFFF 0%, rgba(239, 246, 255, 0.95) 50%, rgba(253, 242, 248, 0.95) 100%) !important;
+    border-radius: 1.5rem !important;
+    border: 1px solid rgba(147, 197, 253, 0.45) !important;
+    box-shadow: 0 25px 50px -12px rgba(23, 37, 84, 0.25) !important;
+}
+
+/* 5. Header Bar Glassmorphism Gradient */
+.bg-header-gradient {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.88) 100%) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-bottom: 1px solid rgba(147, 197, 253, 0.35) !important;
+}
+
+/* 6. Form Input Seragam */
+.form-input {
+    width: 100% !important;
+    height: 2.625rem !important;
+    box-sizing: border-box !important;
+    padding: 0.625rem 0.875rem !important; /* py-2.5 px-3.5 */
+    font-size: 0.875rem !important;        /* text-sm */
+    font-weight: 500 !important;
+    line-height: 1.25rem !important;
+    color: #172554 !important;             /* Navy text */
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid #CBD5E1 !important;   /* border-slate-300 */
+    border-radius: 0.75rem !important;     /* rounded-xl */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.form-input:focus {
+    outline: none !important;
+    border-color: #3B82F6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+}
+
+.form-label {
+    display: block !important;
+    font-size: 0.75rem !important;         /* text-xs */
+    font-weight: 700 !important;           /* font-bold */
+    color: #172554 !important;             /* text-navy */
+    margin-bottom: 0.375rem !important;    /* mb-1.5 */
+    text-transform: uppercase !important;
+    letter-spacing: 0.025em !important;
+}
+
+/* 7. Buttons: Primary, Pink, Gradient, Secondary, Outline, Disabled */
+.btn-pill-primary, .btn-primary {
+    background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 9999px !important;
+    font-weight: 700 !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.35) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+}
+
+.btn-primary:not(.btn-pill-primary) {
+    border-radius: 0.75rem !important;
+}
+
+.btn-pill-primary:hover, .btn-primary:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px 0 rgba(59, 130, 246, 0.45) !important;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+}
+
+.btn-pill-primary:active, .btn-primary:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 8px 0 rgba(59, 130, 246, 0.3) !important;
+    background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%) !important;
+}
+
+.btn-pill-pink, .btn-pink {
+    background: linear-gradient(135deg, #EC4899 0%, #D946EF 100%) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 9999px !important;
+    font-weight: 700 !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 14px 0 rgba(236, 72, 153, 0.35) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+}
+
+.btn-pink:not(.btn-pill-pink) {
+    border-radius: 0.75rem !important;
+}
+
+.btn-pill-pink:hover, .btn-pink:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px 0 rgba(236, 72, 153, 0.45) !important;
+    background: linear-gradient(135deg, #DB2777 0%, #C026D3 100%) !important;
+}
+
+.btn-pill-pink:active, .btn-pink:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 8px 0 rgba(236, 72, 153, 0.3) !important;
+    background: linear-gradient(135deg, #BE185D 0%, #A21CAF 100%) !important;
+}
+
+.btn-pill-gradient, .btn-gradient {
+    background: linear-gradient(135deg, #3B82F6 0%, #EC4899 100%) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 9999px !important;
+    font-weight: 700 !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 16px 0 rgba(59, 130, 246, 0.3) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+}
+
+.btn-gradient:not(.btn-pill-gradient) {
+    border-radius: 0.75rem !important;
+}
+
+.btn-pill-gradient:hover, .btn-gradient:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 22px 0 rgba(236, 72, 153, 0.4) !important;
+    filter: brightness(1.05) !important;
+}
+
+.btn-pill-gradient:active, .btn-gradient:active {
+    transform: translateY(0) !important;
+    filter: brightness(0.95) !important;
+}
+
+/* Secondary & Outline Buttons */
+.btn-pill-secondary, .btn-secondary, .btn-outline {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    color: #172554 !important;
+    border: 1px solid rgba(147, 197, 253, 0.6) !important;
+    border-radius: 9999px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease-in-out !important;
+    box-shadow: 0 2px 6px rgba(23, 37, 84, 0.05) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+}
+
+.btn-secondary:not(.btn-pill-secondary) {
+    border-radius: 0.75rem !important;
+}
+
+.btn-pill-secondary:hover, .btn-secondary:hover, .btn-outline:hover {
+    background-color: #EFF6FF !important;
+    color: #3B82F6 !important;
+    border-color: #3B82F6 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Disabled state */
+button:disabled, .btn-disabled, input:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* 8. Pastel Icon Containers & Icon Buttons */
+.icon-circle-blue {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    background-color: #DBEAFE !important;
+    color: #3B82F6 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.icon-circle-pink {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    background-color: #FCE7F3 !important;
+    color: #EC4899 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.icon-circle-navy {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    background-color: #E0E7FF !important;
+    color: #172554 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    color: #64748B;
+    background: transparent;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.btn-icon-action:hover {
+    color: #3B82F6;
+    background-color: #EFF6FF;
+    border-color: rgba(147, 197, 253, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-icon-action.danger:hover {
+    color: #EC4899;
+    background-color: #FDF2F8;
+    border-color: rgba(249, 168, 212, 0.4);
+}
+
+/* 9. Progress Bars */
+.progress-bar-primary {
+    background: linear-gradient(90deg, #3B82F6 0%, #2563EB 100%) !important;
+}
+
+.progress-bar-gradient {
+    background: linear-gradient(90deg, #3B82F6 0%, #EC4899 100%) !important;
+}
+
+.progress-track {
+    background-color: rgba(226, 232, 240, 0.8) !important;
+    border-radius: 9999px !important;
+    overflow: hidden !important;
+}
+
+/* 10. Badges & Status Pills */
+.badge-blue {
+    background-color: #DBEAFE !important;
+    color: #1E40AF !important;
+    border: 1px solid rgba(147, 197, 253, 0.6) !important;
+}
+
+.badge-pink {
+    background-color: #FCE7F3 !important;
+    color: #9D174D !important;
+    border: 1px solid rgba(249, 168, 212, 0.6) !important;
+}
+
+.badge-navy {
+    background-color: #E0E7FF !important;
+    color: #172554 !important;
+    border: 1px solid rgba(147, 197, 253, 0.4) !important;
+}
+
+.badge-gradient {
+    background: linear-gradient(135deg, rgba(147, 197, 253, 0.3) 0%, rgba(249, 168, 212, 0.3) 100%) !important;
+    color: #172554 !important;
+    border: 1px solid rgba(147, 197, 253, 0.5) !important;
+}
+
+/* 11. Tabs Styling */
+.tab-btn-active {
+    border-bottom: 2.5px solid #3B82F6 !important;
+    color: #3B82F6 !important;
+    font-weight: 700 !important;
+}
+
+.tab-btn-inactive {
+    border-bottom: 2.5px solid transparent !important;
+    color: #64748B !important;
+    font-weight: 500 !important;
+}
+
+.tab-btn-inactive:hover {
+    color: #172554 !important;
+}
+
+/* 12. Text & Colors Utility */
+.text-navy { color: var(--color-navy) !important; }
+.bg-navy { background-color: var(--color-navy) !important; }
+.text-primary { color: var(--color-primary) !important; }
+.bg-primary { background-color: var(--color-primary) !important; }
+.text-pink-accent { color: var(--color-pink) !important; }
+.bg-pink-accent { background-color: var(--color-pink) !important; }
+.text-blue-light { color: var(--color-blue-light) !important; }
+.text-pink-light { color: var(--color-pink-light) !important; }
