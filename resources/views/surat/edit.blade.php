@@ -162,11 +162,17 @@
                                             </div>
 
                                             <!-- Dropdown Autocomplete -->
-                                            <div x-show="item.showDropdown && item.selected === null && filteredPegawai(item.search).length > 0" style="display:none;" class="absolute z-20 w-full mt-1 bg-white border border-blue-200/80 rounded-2xl shadow-xl max-h-60 overflow-y-auto">
+                                            <div x-show="item.showDropdown && item.selected === null && filteredPegawai(item.search, item).length > 0" style="display:none;" class="absolute z-20 w-full mt-1 bg-white border border-blue-200/80 rounded-2xl shadow-xl max-h-60 overflow-y-auto">
                                                 <ul class="py-1 divide-y divide-slate-100">
-                                                    <template x-for="pegawai in filteredPegawai(item.search)" :key="pegawai.id">
+                                                    <template x-for="pegawai in filteredPegawai(item.search, item)" :key="pegawai.id">
                                                         <li @click="selectPegawai(item, pegawai)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors">
-                                                            <div class="text-sm text-navy font-bold" x-text="pegawai.nama"></div>
+                                                            <div class="flex items-center justify-between">
+                                                                <div class="text-sm text-navy font-bold" x-text="pegawai.nama"></div>
+                                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold"
+                                                                      :class="pegawai.kategori_pegawai === 'P3K' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'"
+                                                                      x-text="pegawai.kategori_pegawai || 'ASN'">
+                                                                </span>
+                                                            </div>
                                                             <div class="text-xs text-slate-500 mt-0.5"><span x-text="pegawai.nip"></span> &bull; <span x-text="pegawai.jabatan"></span></div>
                                                         </li>
                                                     </template>
@@ -176,7 +182,13 @@
                                             <!-- Selected Panel -->
                                             <div x-show="item.selected !== null" style="display:none;" class="bg-blue-50/70 border border-t-0 border-blue-200 rounded-b-2xl p-3 relative">
                                                 <div class="pr-8">
-                                                    <p class="text-xs font-bold text-primary mb-0.5" x-text="item.selected?.jabatan"></p>
+                                                    <div class="flex items-center gap-2 mb-0.5">
+                                                        <p class="text-xs font-bold text-primary" x-text="item.selected?.jabatan"></p>
+                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold"
+                                                              :class="item.selected?.kategori_pegawai === 'P3K' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'"
+                                                              x-text="item.selected?.kategori_pegawai || 'ASN'">
+                                                        </span>
+                                                    </div>
                                                     <p class="text-xs font-semibold text-slate-500" x-text="'NIP. ' + item.selected?.nip"></p>
                                                 </div>
                                                 <button type="button" @click="clearSelection(item)" class="absolute top-3 right-3 text-slate-400 hover:text-pink-accent rounded p-1 transition-colors">
@@ -191,9 +203,17 @@
                         </div>
 
                         <!-- Field: KETERANGAN TAMBAHAN -->
-                        <div>
-                            <label class="form-label">Keterangan Tambahan</label>
-                            <textarea name="keterangan" rows="2" class="w-full rounded-xl border border-slate-300 p-3 focus:border-blue-500 focus:outline-none text-sm text-navy bg-white/90">{{ old('keterangan', $surat->keterangan) }}</textarea>
+                        <div x-data="{ ket: {{ json_encode(old('keterangan', $surat->keterangan ?? '')) }}, maxKet: 150 }">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="form-label !mb-0">Keterangan Tambahan</label>
+                                <span class="text-xs font-semibold" :class="(ket || '').length > 140 ? 'text-amber-600 font-bold' : 'text-slate-400'">
+                                    <span x-text="(ket || '').length"></span>/<span x-text="maxKet"></span> karakter
+                                </span>
+                            </div>
+                            <textarea name="keterangan" rows="2" maxlength="150" x-model="ket" placeholder="Keterangan tambahan (opsional, maks 150 karakter)..." class="w-full rounded-xl border border-slate-300 p-3 focus:border-blue-500 focus:outline-none text-sm text-navy bg-white/90"></textarea>
+                            @error('keterangan')
+                                <p class="text-xs text-rose-500 font-semibold mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
                 </div>
@@ -216,7 +236,21 @@
                                     Hapus SPPD
                                 </button>
                             </div>
-                            <p class="text-xs text-slate-500 font-medium">Nomor SPPD akan dipertahankan atau disesuaikan untuk seluruh personel yang ada.</p>
+                            <p class="text-xs text-slate-500 font-medium mb-3">Nomor SPPD per personil yang ditugaskan:</p>
+                            <div class="space-y-2">
+                                <template x-for="(item, idx) in personelList.filter(p => p.selected !== null)" :key="item.id">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white border border-blue-100 rounded-xl">
+                                        <div>
+                                            <span class="text-xs font-bold text-navy" x-text="item.selected?.nama"></span>
+                                            <span class="text-[11px] text-slate-400 ml-1" x-text="'(NIP. ' + item.selected?.nip + ')'"></span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs text-slate-400 font-semibold">No SPPD:</span>
+                                            <input type="text" :name="'nomor_sppd[' + item.selected?.id + ']'" x-model="item.nomor_sppd" placeholder="090/001/..." class="form-input !py-1 !px-2.5 text-xs font-mono w-48 font-bold text-pink-600">
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
                         
                         <div x-show="pilihanSppd === 'tidak'" style="display:none;" x-transition>
@@ -237,7 +271,7 @@
 
             <!-- Footer Buttons -->
             <div class="mt-10 pt-5 border-t border-blue-200/40 flex items-center justify-between">
-                <a href="{{ route('surat.rekap') }}" class="btn-pill-secondary px-5 py-2.5 text-xs font-bold flex items-center gap-1.5 text-slate-600 hover:text-red-600 transition-colors">
+                <a href="{{ route('surat.index') }}" class="btn-pill-secondary px-5 py-2.5 text-xs font-bold flex items-center gap-1.5 text-slate-600 hover:text-red-600 transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     Batal & Exit
                 </a>
@@ -258,10 +292,11 @@
             id: Date.now() + index,
             search: p.nama,
             selected: { id: p.id, nama: p.nama, nip: p.nip, jabatan: p.jabatan },
+            nomor_sppd: p.pivot?.nomor_sppd || '',
             showDropdown: false
         }));
         if (initList.length === 0) {
-            initList = [{ id: Date.now(), search: '', selected: null, showDropdown: false }];
+            initList = [{ id: Date.now(), search: '', selected: null, nomor_sppd: '', showDropdown: false }];
         }
 
         return {
@@ -300,7 +335,7 @@
             
             pegawaiData: [
                 @foreach($pegawais ?? [] as $p)
-                { id: {{ $p->id }}, nama: '{{ addslashes($p->nama) }}', nip: '{{ addslashes($p->nip) }}', jabatan: '{{ addslashes($p->jabatan) }}' },
+                { id: {{ $p->id }}, nama: '{{ addslashes($p->nama) }}', nip: '{{ addslashes($p->nip) }}', jabatan: '{{ addslashes($p->jabatan) }}', kategori_pegawai: '{{ addslashes($p->kategori_pegawai ?? "ASN") }}' },
                 @endforeach
             ],
             personelList: initList,
@@ -315,10 +350,22 @@
                 item.search = '';
                 setTimeout(() => { item.showDropdown = true; }, 50);
             },
-            filteredPegawai(search) {
-                if (!search || search.trim() === '') return this.pegawaiData;
-                const s = search.toLowerCase();
-                return this.pegawaiData.filter(p => p.nama.toLowerCase().includes(s) || p.nip.includes(s));
+            filteredPegawai(search, currentItem = null) {
+                const selectedIds = this.personelList
+                    .map(item => item.selected ? item.selected.id : null)
+                    .filter(id => id !== null && (currentItem && currentItem.selected ? id !== currentItem.selected.id : true));
+
+                const s = search ? search.toLowerCase().trim() : '';
+
+                return this.pegawaiData.filter(p => {
+                    if ([1, 2, 3].includes(Number(p.id))) return false;
+                    if (selectedIds.includes(p.id)) return false;
+                    if (!s) return true;
+                    return (p.nama && p.nama.toLowerCase().includes(s)) ||
+                           (p.nip && p.nip.includes(s)) ||
+                           (p.kategori_pegawai && p.kategori_pegawai.toLowerCase().includes(s)) ||
+                           (p.jabatan && p.jabatan.toLowerCase().includes(s));
+                });
             },
             selectPegawai(item, pegawai) {
                 item.selected = pegawai;

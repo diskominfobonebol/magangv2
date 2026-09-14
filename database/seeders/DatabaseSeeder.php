@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             SettingSeeder::class,
             UserSeeder::class,
             PegawaiSeeder::class,
+            SuratSeeder::class,
         ]);
     }
 }

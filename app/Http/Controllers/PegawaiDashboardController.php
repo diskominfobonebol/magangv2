@@ -15,36 +15,33 @@ class PegawaiDashboardController extends Controller
     {
         $user = Auth::user();
         
-        // Cari data pegawai berdasarkan user_id, atau coba cocokkan dengan nip / nama jika user_id belum terhubung
-        $pegawai = Pegawai::where('user_id', $user->id)->first();
+        // Cari data pegawai berdasarkan user_id, email/nip, atau nama
+        $pegawai = Pegawai::where('user_id', $user->id)
+            ->orWhere('nip', $user->email)
+            ->orWhere('nama', $user->name)
+            ->first();
+
         if (!$pegawai) {
-            $pegawai = Pegawai::where('nip', $user->email)
-                ->orWhere('nama', $user->name)
-                ->first();
-            if ($pegawai) {
-                if (!$pegawai->user_id) {
-                    $pegawai->user_id = $user->id;
-                    $pegawai->save();
-                }
-            } else {
-                $pegawai = Pegawai::create([
-                    'user_id' => $user->id,
-                    'nama' => $user->name,
-                    'nip' => $user->email,
-                    'jabatan' => 'Staff / Pegawai',
-                    'pangkat_golongan' => 'Belum diatur',
-                    'no_wa' => '-'
-                ]);
-            }
+            $pegawai = Pegawai::create([
+                'user_id' => $user->id,
+                'nama' => $user->name,
+                'nip' => $user->email,
+                'jabatan' => 'Staff / Pegawai',
+                'pangkat_golongan' => 'Belum diatur',
+                'no_wa' => '-'
+            ]);
+        } elseif (!$pegawai->user_id) {
+            $pegawai->user_id = $user->id;
+            $pegawai->save();
         }
 
-        // Muat relasinya dengan relasi jenisSurat dan pegawais pada surats
+        // Muat relasinya dengan pengurutan terbaru
         $pegawai->load([
-            'surats' => function ($q) {
+            'surats' => function($q) {
                 $q->with(['jenisSurat', 'pegawais'])
-                  ->orderBy('tgl_surat', 'desc')
-                  ->orderBy('id', 'desc');
-            },
+                  ->latest('tgl_surat')
+                  ->latest('id');
+            }, 
             'kenpaBerkalas.dokumenPegawais'
         ]);
 

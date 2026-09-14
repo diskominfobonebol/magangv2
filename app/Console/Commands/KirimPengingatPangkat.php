@@ -17,8 +17,11 @@ class KirimPengingatPangkat extends Command
         // Tanggal persis 1 bulan ke depan dari hari ini (current date: Sept 2026)
         $targetTanggal = Carbon::now()->addMonth()->format('Y-m-d');
 
-        // Ambil data kenpa_berkalas yang jatuh temponya tepat 1 bulan ke depan beserta data pegawainya
+        // Ambil data kenpa_berkalas yang jatuh temponya tepat 1 bulan ke depan (khusus ASN)
         $dataPengajuan = KenpaBerkala::with('pegawai')
+            ->whereHas('pegawai', function($q) {
+                $q->where('kategori_pegawai', 'ASN');
+            })
             ->whereDate('tgl_jatuh_tempo', $targetTanggal)
             ->where('status', 'Aktif')
             ->get();

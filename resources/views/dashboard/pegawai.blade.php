@@ -3,34 +3,15 @@
 @section('title', 'Dashboard Pegawai')
 
 @section('content')
-<div class="max-w-7xl mx-auto space-y-6" 
-     x-data="{ 
-         showDetailModal: false, 
-         detailSurat: {}, 
-         openDetail(data) { 
-             this.detailSurat = data; 
-             this.showDetailModal = true; 
-         } 
-     }">
+<div class="max-w-7xl mx-auto space-y-6" x-data="pegawaiDashboard()">
     <div class="mb-2">
         <h1 class="text-2xl font-bold text-navy">Dashboard Pegawai</h1>
         <p class="text-sm text-slate-500">Selamat datang di portal layanan mandiri Sinosip.</p>
     </div>
 
     @if(session('success'))
-        <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl text-sm font-medium flex items-center gap-2">
-            <i class="fa-solid fa-circle-check text-emerald-500 text-base"></i>
-            <span>{{ session('success') }}</span>
-        </div>
-    @endif
-
-    @if(isset($errors) && $errors->any())
-        <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-2xl text-sm font-medium">
-            <ul class="list-disc pl-5 space-y-1">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
+        <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl text-sm font-medium">
+            {{ session('success') }}
         </div>
     @endif
 
@@ -56,93 +37,104 @@
                 </div>
             </div>
 
-            <!-- Riwayat Surat / SPT (Tersinkron dengan Data Real SPT/SPPD) -->
-            <div class="bg-card-gradient rounded-3xl p-6">
-                <div class="flex items-center justify-between mb-4 pb-2 border-b border-blue-200/40">
+            <!-- Riwayat Surat / SPT -->
+            <div class="bg-card-gradient rounded-3xl p-6 shadow-xl shadow-blue-900/5 border border-blue-200/50 space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-blue-200/40">
                     <h3 class="font-bold text-navy flex items-center gap-2">
-                        <i class="fa-solid fa-file-lines text-primary"></i>
+                        <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         Riwayat Surat / SPT
                     </h3>
                     @if(isset($pegawai->surats) && $pegawai->surats->count() > 0)
-                        <span class="badge-blue text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+                        <span class="inline-flex items-center text-xs font-bold text-primary bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200/60">
                             {{ $pegawai->surats->count() }} Surat
                         </span>
                     @endif
                 </div>
 
                 @if(isset($pegawai->surats) && $pegawai->surats->count() > 0)
-                    <div class="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                    <div class="space-y-3 max-h-[520px] overflow-y-auto pr-1">
                         @foreach($pegawai->surats as $surat)
                             @php
-                                $suratData = [
+                                $mySppd = $surat->pivot->nomor_sppd ?? null;
+                                $jsonData = [
                                     'id' => $surat->id,
-                                    'nomor_surat' => $surat->nomor_surat ?? '-',
-                                    'perihal' => $surat->perihal ?? 'Surat Tugas',
-                                    'jenis_kode' => $surat->jenisSurat->kode ?? 'SPT',
-                                    'jenis_nama' => $surat->jenisSurat->nama_jenis ?? 'Surat Tugas',
-                                    'tgl_surat' => $surat->tgl_surat ? \Carbon\Carbon::parse($surat->tgl_surat)->translatedFormat('d F Y') : '-',
+                                    'nomor_surat' => $surat->nomor_surat,
+                                    'tgl_surat' => $surat->tgl_surat,
+                                    'tgl_formatted' => \Carbon\Carbon::parse($surat->tgl_surat)->translatedFormat('d F Y'),
+                                    'perihal' => $surat->perihal ?? 'Surat Perintah Tugas',
                                     'tujuan' => $surat->tujuan ?? '-',
-                                    'uraian' => $surat->uraian ?? 'Tidak ada uraian tugas.',
-                                    'keterangan' => $surat->keterangan ?? 'Tidak ada keterangan tambahan.',
+                                    'uraian' => $surat->uraian ?? '',
+                                    'keterangan' => $surat->keterangan ?? '',
+                                    'has_sppd' => (int)$surat->has_sppd,
                                     'status' => $surat->status ?? 'Terbit',
-                                    'has_sppd' => (bool)$surat->has_sppd,
+                                    'jenis' => optional($surat->jenisSurat)->nama_jenis ?? 'Surat Perintah Tugas (SPT)',
                                     'pegawais' => $surat->pegawais->map(function($p) use ($pegawai) {
                                         return [
                                             'id' => $p->id,
                                             'nama' => $p->nama,
                                             'nip' => $p->nip,
                                             'jabatan' => $p->jabatan,
-                                            'nomor_sppd' => $p->pivot->nomor_sppd ?: '-',
-                                            'is_current_user' => ($p->id === $pegawai->id),
+                                            'nomor_sppd' => $p->pivot->nomor_sppd ?? '-',
+                                            'is_me' => ($p->id == $pegawai->id)
                                         ];
-                                    })->values()
+                                    })->values()->toArray()
                                 ];
                             @endphp
-                            <div class="p-4 bg-white/80 border border-blue-200/50 rounded-2xl hover:border-blue-300 hover:shadow-xs transition-all space-y-2">
-                                <div class="flex items-start justify-between gap-2">
-                                    <div class="min-w-0 flex-1">
-                                        <div class="flex items-center gap-1.5 flex-wrap">
-                                            <span class="badge-blue text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                                {{ $surat->jenisSurat->kode ?? 'SPT' }}
-                                            </span>
-                                            @if($surat->has_sppd)
-                                                <span class="badge-pink text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                                    +SPPD
-                                                </span>
-                                            @endif
-                                            <span class="text-[10px] text-slate-400 font-medium">
-                                                <i class="fa-regular fa-calendar text-[10px] mr-0.5"></i>
-                                                {{ $surat->tgl_surat ? \Carbon\Carbon::parse($surat->tgl_surat)->translatedFormat('d M Y') : '-' }}
-                                            </span>
-                                        </div>
-                                        <p class="font-bold text-navy text-xs mt-1 truncate" title="{{ $surat->nomor_surat }}">
-                                            {{ $surat->nomor_surat ?? '-' }}
-                                        </p>
+                            <div class="p-3.5 bg-white/80 rounded-2xl border border-blue-100/80 hover:border-blue-300 hover:shadow-sm transition-all duration-200 space-y-2.5">
+                                <!-- Baris Tanggal, Status, & Tombol Detail -->
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-slate-500 font-semibold flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        {{ \Carbon\Carbon::parse($surat->tgl_surat)->translatedFormat('d M Y') }}
+                                    </span>
+                                    <div class="flex items-center gap-1.5">
+                                        @if(($surat->status ?? 'Terbit') === 'Draft')
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">Draft</span>
+                                        @else
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">Terbit</span>
+                                        @endif
+                                        
+                                        <button type="button" 
+                                                @click="openDetail({{ json_encode($jsonData) }})" 
+                                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-50 text-primary hover:bg-primary hover:text-white font-bold text-[11px] border border-blue-200/60 shadow-xs transition-all cursor-pointer"
+                                                title="Lihat Detail Surat">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                            Detail
+                                        </button>
                                     </div>
-                                    <button type="button" 
-                                            @click="openDetail(@js($suratData))" 
-                                            class="btn-pill-secondary px-3 py-1.5 text-xs font-bold gap-1.5 text-primary hover:text-blue-700 shrink-0 shadow-2xs">
-                                        <i class="fa-solid fa-eye text-[11px]"></i>
-                                        Detail
-                                    </button>
                                 </div>
-                                <p class="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                                    {{ $surat->perihal ?? '-' }}
-                                </p>
-                                @if($surat->pivot && $surat->pivot->nomor_sppd)
-                                    <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                                        <span class="text-slate-400 text-[10px]">No. SPPD Anda:</span>
-                                        <span class="font-mono font-bold text-pink-600 text-xs">{{ $surat->pivot->nomor_sppd }}</span>
-                                    </div>
-                                @endif
+
+                                <!-- Baris Nomor Surat SPT -->
+                                <div class="flex items-center justify-between text-xs bg-blue-50/50 px-3 py-2 rounded-xl border border-blue-100/60">
+                                    <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Nomor SPT</span>
+                                    <span class="font-mono font-bold text-primary text-xs">{{ $surat->nomor_surat }}</span>
+                                </div>
+
+                                <!-- Baris Nomor Surat SPPD (Ringkas) -->
+                                <div class="flex items-center justify-between text-xs bg-pink-50/40 px-3 py-2 rounded-xl border border-pink-100/60">
+                                    <span class="text-[10px] uppercase font-bold text-pink-500/80 tracking-wider">Nomor SPPD</span>
+                                    @if($surat->has_sppd && $mySppd)
+                                        <span class="font-mono font-bold text-pink-600 text-xs inline-flex items-center gap-1.5">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-pink-500 inline-block"></span>
+                                            {{ $mySppd }}
+                                            <span class="text-[9px] px-1.5 py-0.2 bg-pink-100 text-pink-700 font-sans font-bold rounded">Milik Anda</span>
+                                        </span>
+                                    @elseif($surat->has_sppd)
+                                        <span class="text-pink-600 font-semibold text-xs">SPPD Aktif</span>
+                                    @else
+                                        <span class="text-slate-400 text-xs italic">Tidak Ada SPPD</span>
+                                    @endif
+                                </div>
                             </div>
                         @endforeach
                     </div>
                 @else
-                    <div class="p-6 text-center text-slate-400 bg-white/40 rounded-2xl border border-dashed border-blue-200/60">
-                        <i class="fa-regular fa-folder-open text-2xl text-slate-300 mb-2 block"></i>
-                        <p class="text-xs text-slate-500 font-medium">Belum ada riwayat surat/SPT.</p>
-                        <p class="text-[11px] text-slate-400 mt-1">Surat tugas atau SPPD atas nama Anda akan otomatis muncul di sini.</p>
+                    <div class="py-8 text-center space-y-2">
+                        <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-400 flex items-center justify-center mx-auto text-xl font-bold">
+                            📄
+                        </div>
+                        <p class="text-sm font-medium text-slate-500">Belum ada riwayat surat/SPT.</p>
+                        <p class="text-xs text-slate-400">Anda belum ditugaskan pada surat perintah tugas manapun.</p>
                     </div>
                 @endif
             </div>
@@ -313,130 +305,127 @@
         </div>
     </div>
 
-    <!-- MODAL DETAIL SURAT (READ-ONLY) -->
+    <!-- Modal Detail Riwayat Surat (Reuse Tampilan Detail Nomor Surat) -->
     <div x-show="showDetailModal" 
-         x-cloak
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6"
-         style="display: none;"
-         @keydown.escape.window="showDetailModal = false">
+         x-cloak 
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 sm:p-6"
+         @keydown.escape.window="closeDetail()">
         
-        <div class="bg-white rounded-3xl shadow-2xl border border-blue-100 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
-             @click.away="showDetailModal = false">
+        <!-- Backdrop -->
+        <div x-show="showDetailModal" 
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+             @click="closeDetail()"></div>
+
+        <!-- Modal Dialog -->
+        <div x-show="showDetailModal" 
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             class="relative bg-card-gradient rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl border border-blue-200/60 space-y-6 z-10 max-h-[90vh] overflow-y-auto">
             
-            <!-- 1. Header Modal -->
-            <div class="px-6 pt-6 pb-4 border-b border-slate-100 flex items-start justify-between gap-4 bg-slate-50/50">
-                <div class="space-y-1">
-                    <!-- Badge Jenis Surat & Badge Status -->
-                    <div class="flex items-center gap-2">
-                        <span class="badge-blue text-xs font-bold px-3 py-0.5 rounded-full uppercase tracking-wider" 
-                              x-text="detailSurat.jenis_kode || 'SPT'"></span>
-                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-3 py-0.5 rounded-full" 
-                              x-text="detailSurat.status || 'Terbit'"></span>
-                    </div>
-                    <!-- Judul (nama jenis surat) & Tanggal Terbit -->
-                    <h3 class="text-lg font-bold text-navy leading-snug pt-1" x-text="detailSurat.perihal || detailSurat.jenis_nama || 'Surat Tugas'"></h3>
-                    <p class="text-xs text-slate-500 flex items-center gap-1.5">
-                        <i class="fa-regular fa-calendar text-primary"></i>
-                        <span>Tanggal Terbit: <strong class="text-slate-700" x-text="detailSurat.tgl_surat || '-'"></strong></span>
-                    </p>
-                </div>
-                
-                <!-- Tombol Close (x) di Pojok Kanan Atas -->
-                <button type="button" 
-                        @click="showDetailModal = false" 
-                        class="w-9 h-9 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors shrink-0 shadow-2xs">
-                    <i class="fa-solid fa-xmark text-base"></i>
-                </button>
-            </div>
-
-            <!-- 2. Body Modal (Scrollable) -->
-            <div class="flex-1 overflow-y-auto p-6 space-y-5">
-                <!-- Dua Kotak Sejajar: Nomor Surat SPT & Tujuan/Instansi -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="bg-slate-50/90 border border-slate-200/80 rounded-2xl p-3.5">
-                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                            <i class="fa-solid fa-hashtag text-primary mr-1"></i> Nomor Surat SPT
-                        </span>
-                        <p class="text-xs font-bold text-navy font-mono break-all" x-text="detailSurat.nomor_surat || '-'"></p>
-                    </div>
-                    <div class="bg-slate-50/90 border border-slate-200/80 rounded-2xl p-3.5">
-                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                            <i class="fa-solid fa-location-dot text-rose-500 mr-1"></i> Tujuan / Instansi
-                        </span>
-                        <p class="text-xs font-bold text-navy" x-text="detailSurat.tujuan || '-'"></p>
-                    </div>
-                </div>
-
-                <!-- Field Uraian / Maksud Tugas (Read-Only) -->
-                <div>
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                        <i class="fa-solid fa-align-left text-primary mr-1"></i> Uraian / Maksud Tugas
-                    </label>
-                    <div class="w-full bg-slate-50/90 border border-slate-200/80 rounded-2xl p-3.5 text-xs text-slate-700 leading-relaxed min-h-[56px] whitespace-pre-line select-text" 
-                         x-text="detailSurat.uraian || 'Tidak ada uraian tugas.'"></div>
-                </div>
-
-                <!-- Field Keterangan Tambahan (Read-Only) -->
-                <div>
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                        <i class="fa-solid fa-circle-info text-primary mr-1"></i> Keterangan Tambahan
-                    </label>
-                    <div class="w-full bg-slate-50/90 border border-slate-200/80 rounded-2xl p-3.5 text-xs text-slate-700 leading-relaxed min-h-[48px] whitespace-pre-line select-text" 
-                         x-text="detailSurat.keterangan || 'Tidak ada keterangan tambahan.'"></div>
-                </div>
-
-                <!-- Tabel Pegawai yang Ditugaskan & Nomor SPPD -->
-                <div>
-                    <div class="flex items-center justify-between mb-2.5">
-                        <h4 class="text-xs font-bold text-navy uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="fa-solid fa-users text-primary"></i> Pegawai yang Ditugaskan & Nomor SPPD
-                        </h4>
-                        <span class="badge-blue text-[10px] font-bold px-2.5 py-0.5 rounded-full" 
-                              x-text="(detailSurat.pegawais ? detailSurat.pegawais.length : 0) + ' Orang'"></span>
+            <template x-if="activeSurat">
+                <div class="space-y-6">
+                    <!-- Header Modal -->
+                    <div class="flex items-start justify-between border-b border-blue-100 pb-4">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <span class="badge-blue px-3 py-0.5 rounded-full text-xs font-extrabold uppercase" x-text="activeSurat.jenis || 'SPT'"></span>
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold"
+                                      :class="activeSurat.status === 'Draft' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'"
+                                      x-text="activeSurat.status || 'Terbit'"></span>
+                            </div>
+                            <h3 class="text-xl font-bold text-navy pt-1" x-text="activeSurat.perihal || 'Surat Tugas'"></h3>
+                            <p class="text-xs text-slate-500 font-semibold flex items-center gap-1">
+                                <span>Tanggal Terbit:</span>
+                                <span class="text-navy font-bold" x-text="activeSurat.tgl_formatted"></span>
+                            </p>
+                        </div>
+                        <button type="button" 
+                                @click="closeDetail()" 
+                                class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+                                title="Tutup">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
                     </div>
 
-                    <div class="border border-slate-200/80 rounded-2xl overflow-hidden shadow-2xs">
-                        <div class="overflow-x-auto max-h-56 overflow-y-auto">
+                    <!-- Nomor Surat & Tujuan -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-blue-50/60 p-3.5 rounded-2xl border border-blue-100 space-y-1">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nomor Surat SPT</span>
+                            <p class="text-sm font-mono font-bold text-primary break-all" x-text="activeSurat.nomor_surat"></p>
+                        </div>
+                        <div class="bg-blue-50/60 p-3.5 rounded-2xl border border-blue-100 space-y-1">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Tujuan / Instansi</span>
+                            <p class="text-sm font-bold text-navy" x-text="activeSurat.tujuan || '-'"></p>
+                        </div>
+                    </div>
+
+                    <!-- Uraian / Maksud Surat -->
+                    <template x-if="activeSurat.uraian">
+                        <div class="space-y-1.5">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Uraian / Maksud Tugas</span>
+                            <div class="text-xs text-slate-700 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/60 leading-relaxed" x-text="activeSurat.uraian"></div>
+                        </div>
+                    </template>
+
+                    <!-- Keterangan Tambahan -->
+                    <template x-if="activeSurat.keterangan">
+                        <div class="space-y-1.5">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Keterangan Tambahan</span>
+                            <div class="text-xs text-slate-700 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/60 leading-relaxed" x-text="activeSurat.keterangan"></div>
+                        </div>
+                    </template>
+
+                    <!-- Daftar Pegawai yang Ditugaskan & Nomor SPPD -->
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-navy uppercase tracking-wider">Pegawai yang Ditugaskan & Nomor SPPD</span>
+                            <span class="text-xs font-bold bg-blue-100 text-primary px-2.5 py-0.5 rounded-full" x-text="(activeSurat.pegawais || []).length + ' Orang'"></span>
+                        </div>
+
+                        <div class="overflow-x-auto rounded-2xl border border-blue-100 bg-white/60">
                             <table class="w-full text-left border-collapse text-xs">
                                 <thead>
-                                    <tr class="bg-slate-100/90 border-b border-slate-200/80 text-[10px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 bg-slate-100">
-                                        <th class="py-2.5 px-3 text-center w-10">No</th>
+                                    <tr class="border-b border-blue-100 bg-blue-50/50 text-slate-400 font-bold uppercase text-[11px]">
+                                        <th class="py-2.5 px-3 w-10">No</th>
                                         <th class="py-2.5 px-3">Nama Pegawai / NIP</th>
                                         <th class="py-2.5 px-3">Jabatan</th>
                                         <th class="py-2.5 px-3">Nomor SPPD</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-slate-100 bg-white">
-                                    <template x-for="(peg, idx) in (detailSurat.pegawais || [])" :key="peg.id">
-                                        <tr :class="peg.is_current_user ? 'bg-blue-50/60 font-medium' : 'hover:bg-slate-50/50'">
-                                            <td class="py-2.5 px-3 text-center text-slate-400 font-medium" x-text="idx + 1"></td>
-                                            <td class="py-2.5 px-3">
-                                                <div class="flex items-center gap-1.5 flex-wrap">
-                                                    <span class="font-bold text-navy" x-text="peg.nama"></span>
-                                                    <template x-if="peg.is_current_user">
-                                                        <span class="px-2 py-0.5 text-[10px] font-extrabold bg-blue-600 text-white rounded-full uppercase tracking-wider shadow-2xs">
-                                                            Anda
-                                                        </span>
+                                <tbody class="divide-y divide-blue-50">
+                                    <template x-for="(p, index) in (activeSurat.pegawais || [])" :key="'peg-' + p.id">
+                                        <tr :class="p.is_me ? 'bg-blue-50/60 font-semibold' : 'hover:bg-blue-50/30'">
+                                            <td class="py-3 px-3 text-slate-500" x-text="index + 1"></td>
+                                            <td class="py-3 px-3">
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="font-bold text-navy" x-text="p.nama"></span>
+                                                    <template x-if="p.is_me">
+                                                        <span class="text-[9px] px-1.5 py-0.2 bg-blue-100 text-primary font-bold rounded">Anda</span>
                                                     </template>
                                                 </div>
-                                                <span class="block text-[10px] text-slate-400" x-text="'NIP. ' + (peg.nip || '-')"></span>
+                                                <div class="text-[10px] text-slate-400" x-text="'NIP. ' + p.nip"></div>
                                             </td>
-                                            <td class="py-2.5 px-3 text-slate-600" x-text="peg.jabatan || '-'"></td>
-                                            <td class="py-2.5 px-3 font-mono font-semibold" 
-                                                :class="peg.nomor_sppd && peg.nomor_sppd !== '-' ? 'text-pink-600' : 'text-slate-400'" 
-                                                x-text="peg.nomor_sppd || '-'"></td>
-                                        </tr>
-                                    </template>
-                                    <template x-if="!detailSurat.pegawais || detailSurat.pegawais.length === 0">
-                                        <tr>
-                                            <td colspan="4" class="py-4 text-center text-slate-400 italic">
-                                                Tidak ada data pegawai yang ditugaskan.
+                                            <td class="py-3 px-3 text-slate-600" x-text="p.jabatan || '-'"></td>
+                                            <td class="py-3 px-3">
+                                                <template x-if="activeSurat.has_sppd && p.nomor_sppd && p.nomor_sppd !== '-'">
+                                                    <span class="font-mono font-bold text-pink-600 inline-flex items-center gap-1">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-pink-500 inline-block"></span>
+                                                        <span x-text="p.nomor_sppd"></span>
+                                                    </span>
+                                                </template>
+                                                <template x-if="!activeSurat.has_sppd || !p.nomor_sppd || p.nomor_sppd === '-'">
+                                                    <span class="text-slate-400 italic text-[11px]">Tidak Ada SPPD</span>
+                                                </template>
                                             </td>
                                         </tr>
                                     </template>
@@ -444,19 +433,35 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Footer Modal -->
+                    <div class="flex justify-end pt-3 border-t border-blue-100">
+                        <button type="button" 
+                                @click="closeDetail()" 
+                                class="btn-pill-secondary px-5 py-2 text-xs font-bold text-slate-600 hover:text-navy cursor-pointer">
+                            Tutup
+                        </button>
+                    </div>
                 </div>
-            </div>
-
-            <!-- 3. Footer Modal -->
-            <div class="px-6 py-4 bg-slate-50/90 border-t border-slate-200/80 flex items-center justify-end">
-                <button type="button" 
-                        @click="showDetailModal = false" 
-                        class="btn-pill-secondary px-6 py-2 text-xs font-bold text-slate-700 hover:text-navy shadow-2xs">
-                    Tutup
-                </button>
-            </div>
-
+            </template>
         </div>
     </div>
 </div>
+
+<script>
+    function pegawaiDashboard() {
+        return {
+            showDetailModal: false,
+            activeSurat: null,
+            openDetail(data) {
+                this.activeSurat = data;
+                this.showDetailModal = true;
+            },
+            closeDetail() {
+                this.showDetailModal = false;
+                this.activeSurat = null;
+            }
+        };
+    }
+</script>
 @endsection

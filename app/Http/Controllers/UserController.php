@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Pegawai;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
@@ -52,11 +53,12 @@ class UserController extends Controller
                 'nama' => $request->name,
                 'nip' => $request->identity,
                 'jabatan' => 'Staff / Pegawai',
+                'kategori_pegawai' => $request->kategori_pegawai ?? 'ASN',
                 'pangkat_golongan' => 'Belum diatur',
             ]);
         }
 
-        return back()->with('success', 'User / Pengguna baru berhasil ditambahkan!');
+        return back()->with('success', 'User / Pegawai baru berhasil ditambahkan dan disinkronkan!');
     }
 
     public function destroy($id)
@@ -74,5 +76,30 @@ class UserController extends Controller
         $user->delete();
 
         return back()->with('success', 'User berhasil dihapus!');
+    }
+
+    public function resetPassword(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'custom_password' => 'nullable|string|min:6',
+        ]);
+
+        if ($request->filled('custom_password')) {
+            $newPassword = $request->custom_password;
+        } else {
+            // Generate password acak 8 karakter kombinasi huruf dan angka
+            $newPassword = Str::random(8);
+        }
+
+        $user->password = Hash::make($newPassword);
+        $user->save();
+
+        return back()->with('reset_success', [
+            'name' => $user->name,
+            'email' => $user->email,
+            'password' => $newPassword,
+        ]);
     }
 }

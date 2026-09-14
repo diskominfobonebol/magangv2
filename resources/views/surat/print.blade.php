@@ -36,21 +36,27 @@
     <!-- KOP SURAT MENGGUNAKAN TABEL AGAR TIDAK TURUN KE BAWAH -->
     <table style="width: 100%; border-collapse: collapse; border-bottom: 3px solid #000; margin-bottom: 20px; padding-bottom: 10px; border:none;">
         <tr>
-            <!-- Kolom Logo di Kiri (Diganti dengan Gambar Logo Kominfo) -->
-            <td style="width: 20%; vertical-align: middle; text-align: center; border: none; padding-bottom: 10px;">
-               <img src="{{ ($isPdf ?? false) ? public_path('images/logo-kominfo.jpg') : asset('images/logo-kominfo.jpg') }}" alt="Logo Kominfo" style="width: 110px; height: auto;">
+            <!-- Kolom Logo di Kiri (Logo Pemda Bone Bolango) -->
+            <td style="width: 15%; vertical-align: middle; text-align: center; border: none; padding-bottom: 10px;">
+                @if(file_exists(public_path('images/bonebolango.png')))
+                    <img src="{{ ($isPdf ?? false) ? public_path('images/bonebolango.png') : asset('images/bonebolango.png') }}" alt="Logo Bone Bolango" style="width: 65px; height: auto;">
+                @endif
             </td>
             
             <!-- Kolom Teks Instansi di Tengah -->
-            <td style="width: 65%; vertical-align: middle; text-align: center; border: none; padding-bottom: 10px;">
-                <h1 style="font-size: 13pt; margin: 0; text-transform: uppercase; font-weight: bold;">Pemerintah Daerah Provinsi</h1>
+            <td style="width: 70%; vertical-align: middle; text-align: center; border: none; padding-bottom: 10px;">
+                <h1 style="font-size: 13pt; margin: 0; text-transform: uppercase; font-weight: bold;">Pemerintah Kabupaten Bone Bolango</h1>
                 <h2 style="font-size: 14pt; margin: 2px 0; text-transform: uppercase; font-weight: bold; white-space: nowrap;">Dinas Komunikasi dan Informatika</h2>
-                <p style="font-size: 9.5pt; margin: 2px 0 0 0; white-space: nowrap;">Jl. Jenderal Sudirman No. 123, Kompleks Perkantoran, Kota Pusat 90111</p>
-                <p style="font-size: 9.5pt; margin: 0; white-space: nowrap;">Telepon: (0411) 123456 | Email: diskominfo@pemprov.go.id</p>
+                <p style="font-size: 9.5pt; margin: 2px 0 0 0; white-space: nowrap;">Jl. Prof. Dr. Ing. B.J. Habibie, Kompleks Perkantoran Bone Bolango, Kode Pos 96582</p>
+                <p style="font-size: 9.5pt; margin: 0; white-space: nowrap;">Laman: www.bonebolangokab.go.id | Email: kominfo@bonebolangokab.go.id</p>
             </td>
             
-            <!-- Kolom Kosong Penyeimbang di Kanan (Agar Teks Benar-benar di Tengah) -->
-            <td style="width: 15%; border: none;"></td>
+            <!-- Kolom Logo di Kanan (Logo Kominfo) -->
+            <td style="width: 15%; vertical-align: middle; text-align: center; border: none; padding-bottom: 10px;">
+                @if(file_exists(public_path('images/logo-kominfo.png')))
+                    <img src="{{ ($isPdf ?? false) ? public_path('images/logo-kominfo.png') : asset('images/logo-kominfo.png') }}" alt="Logo Kominfo" style="width: 75px; height: auto;">
+                @endif
+            </td>
         </tr>
     </table>
 

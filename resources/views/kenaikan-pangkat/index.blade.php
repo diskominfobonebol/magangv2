@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Kenaikan Pangkat & KGB')
+@section('title', 'Kenaikan Pangkat & Berkala')
 
 @section('content')
 <!-- BUNGKUS UTAMA ALPINE.JS -->
@@ -9,7 +9,7 @@
     <!-- Header & Button -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h2 class="text-2xl font-bold text-navy">Kenaikan Pangkat & KGB</h2>
+            <h2 class="text-2xl font-bold text-navy">Kenaikan Pangkat & Berkala</h2>
             <p class="text-slate-500 text-sm mt-1">Pantau jadwal dan progres unggah berkas seluruh pegawai</p>
         </div>
         <button @click="modalBuka = true" type="button" class="btn-pill-primary px-5 py-2.5 text-sm gap-2 shadow-lg shadow-blue-500/25">
@@ -120,7 +120,12 @@
                     @endphp
                     <tr class="hover:bg-white/50 transition-colors">
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-bold text-navy">{{ $p->nama }}</div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-bold text-navy">{{ $p->nama }}</span>
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold {{ ($p->kategori_pegawai ?? 'ASN') === 'P3K' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200' }}">
+                                    {{ $p->kategori_pegawai ?? 'ASN' }}
+                                </span>
+                            </div>
                             <div class="text-xs text-slate-500 font-semibold">{{ $p->nip }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -261,8 +266,15 @@
                                 <input type="text" name="jabatan" required placeholder="Nama jabatan saat ini" class="form-input">
                             </div>
 
-                            <!-- Password Login -->
+                            <!-- Kategori Pegawai -->
                             <div>
+                                <label class="form-label">Kategori Pegawai</label>
+                                <input type="text" value="ASN (PNS)" readonly class="form-input bg-blue-50/60 font-bold text-navy cursor-not-allowed">
+                                <input type="hidden" name="kategori_pegawai" value="ASN">
+                            </div>
+
+                            <!-- Password Login -->
+                            <div class="sm:col-span-2">
                                 <label class="form-label">Password Login</label>
                                 <input type="text" name="password" required value="123456" placeholder="123456" class="form-input">
                                 <p class="text-[10px] text-slate-500 mt-1">*Default terisi 123456.</p>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Pegawai;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -16,28 +17,56 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->validate([
+        $request->validate([
             'email' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
         $loginInput = trim($request->input('email'));
-        if (strtolower($loginInput) === 'admin@kominfo.bonebolango.go.id') {
-            $loginInput = 'admin@kominfo.bonebolango.id';
+        $cleanNip = preg_replace('/[^0-9]/', '', $loginInput);
+
+        // 1. Cari user langsung berdasarkan Email atau NIP di tabel users
+        $user = User::where(function ($query) use ($loginInput, $cleanNip) {
+            $query->whereRaw('LOWER(email) = ?', [strtolower($loginInput)]);
+            
+            if (!empty($cleanNip)) {
+                $query->orWhere('email', $cleanNip);
+            }
+
+            // Normalisasi variasi domain kominfo bonebolango
+            if (strtolower($loginInput) === 'admin@kominfo.bonebolango.go.id') {
+                $query->orWhere('email', 'admin@kominfo.bonebolango.id');
+            } elseif (strtolower($loginInput) === 'admin@kominfo.bonebolango.id') {
+                $query->orWhere('email', 'admin@kominfo.bonebolango.go.id');
+            }
+        })->first();
+
+        // 2. Jika tidak ditemukan langsung di tabel users, cari via data Pegawai (kolom nip)
+        if (!$user) {
+            $pegawai = Pegawai::where('nip', $loginInput)
+                ->when(!empty($cleanNip), function ($q) use ($cleanNip) {
+                    $q->orWhere('nip', $cleanNip);
+                })
+                ->first();
+
+            if ($pegawai && $pegawai->user_id) {
+                $user = User::find($pegawai->user_id);
+            }
         }
 
-        // Deteksi: Jika input mengandung karakter '@', anggap sebagai email. Jika tidak, anggap sebagai NIP.
-        $fieldType = filter_var($loginInput, FILTER_VALIDATE_EMAIL) ? 'email' : 'email'; 
-        
-        $credentialsArray = [
-            $fieldType => $loginInput,
-            'password' => $request->input('password')
-        ];
+        // 3. Verifikasi kecocokan password menggunakan Hash::check
+        if ($user && Hash::check($request->input('password'), $user->password)) {
+            // Periksa apakah akun dinonaktifkan
+            if (isset($user->is_active) && !$user->is_active) {
+                return back()->withErrors([
+                    'email' => 'Akun Anda sedang dinonaktifkan. Silakan hubungi Administrator.',
+                ])->onlyInput('email');
+            }
 
-        if (Auth::attempt($credentialsArray)) {
+            Auth::login($user, $request->boolean('remember'));
             $request->session()->regenerate();
             
-            $role = (int) Auth::user()->role_id;
+            $role = (int) $user->role_id;
             if ($role === 1) {
                 return redirect()->intended('/dashboard/master');
             } elseif ($role === 2) {

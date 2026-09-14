@@ -18,6 +18,9 @@ class KirimPengingatWa extends Command
         $targetTanggal = Carbon::now()->addDays(30)->toDateString();
 
         $kenpas = KenpaBerkala::with('pegawai')
+            ->whereHas('pegawai', function($q) {
+                $q->where('kategori_pegawai', 'ASN');
+            })
             ->whereDate('tgl_jatuh_tempo', $targetTanggal)
             ->where('status', 'Aktif')
             ->get();

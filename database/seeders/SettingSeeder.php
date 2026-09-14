@@ -12,11 +12,18 @@ class SettingSeeder extends Seeder
      */
     public function run(): void
     {
-        \App\Models\SystemSetting::insert([
+        $settings = [
             ['key' => 'app_name', 'value' => 'Sistem Arsip dan Notifikasi Bone Bolango', 'keterangan' => 'Nama Aplikasi'],
             ['key' => 'wa_api_url', 'value' => 'http://localhost:3000/send', 'keterangan' => 'URL API WhatsApp'],
             ['key' => 'wa_api_key', 'value' => 'secret123', 'keterangan' => 'API Key WhatsApp'],
             ['key' => 'format_surat_instansi', 'value' => 'BONE-BOLANGO', 'keterangan' => 'Format Nomenklatur Surat'],
-        ]);
+        ];
+
+        foreach ($settings as $setting) {
+            \App\Models\SystemSetting::updateOrCreate(
+                ['key' => $setting['key']],
+                $setting
+            );
+        }
     }
 }
