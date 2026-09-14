@@ -2,133 +2,199 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Rekapitulasi Nomor Surat {{ !empty($filterJenisLabel) ? '— ' . $filterJenisLabel . ' ' : '' }}- Dinas Kominfo Bone Bolango</title>
+    <title>Rekapitulasi Nomor Surat SPT & SPPD - Dinas Kominfo Bone Bolango</title>
     <style>
+        @page {
+            margin: 1.2cm 1.2cm 1.2cm 1.2cm;
+            size: A4 landscape;
+        }
         body {
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 11px;
-            color: #172554;
-            line-height: 1.4;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 9.5pt;
+            line-height: 1.3;
+            color: #000;
+            background: #fff;
             margin: 0;
-            padding: 15px;
+            padding: 0;
         }
-        .meta-info {
-            margin-bottom: 10px;
-            font-size: 10px;
-        }
-        .rekap-cards {
+        
+        /* Kop Surat Resmi Symmetrical Rata Tengah (Single Logo Pemda di Kiri) */
+        .kop-table {
             width: 100%;
-            margin-bottom: 15px;
             border-collapse: collapse;
+            border-bottom: 3px double #000;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
         }
-        .rekap-cards td {
-            padding: 8px;
+        .kop-table td {
+            border: none;
+            padding: 0;
+            vertical-align: middle;
+        }
+        .kop-logo-kiri {
+            width: 12%;
             text-align: center;
-            border: 1px solid #cbd5e1;
-            background-color: #f8fafc;
+            vertical-align: middle;
         }
-        .rekap-cards .card-title {
-            font-size: 9px;
-            color: #64748b;
+        .kop-logo-kiri img {
+            width: 60px;
+            height: auto;
+            max-height: 72px;
+            display: inline-block;
+        }
+        .kop-spacer-kanan {
+            width: 12%;
+        }
+        .kop-text {
+            width: 76%;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .kop-text h2 {
+            font-size: 11pt;
+            margin: 0;
+            font-weight: bold;
             text-transform: uppercase;
-            font-weight: bold;
+            letter-spacing: 0.5px;
+            color: #000;
+            line-height: 1.25;
         }
-        .rekap-cards .card-value {
-            font-size: 14px;
+        .kop-text h1 {
+            font-size: 15pt;
+            margin: 2px 0 3px 0;
             font-weight: bold;
-            color: #172554;
-            margin-top: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #000;
+            line-height: 1.2;
         }
-        .data-table {
+        .kop-text p.kop-alamat {
+            font-size: 8.5pt;
+            margin: 1px 0;
+            line-height: 1.3;
+            color: #111;
+        }
+        .kop-text p.kop-kontak {
+            font-size: 8.5pt;
+            margin: 1px 0;
+            line-height: 1.3;
+            color: #222;
+        }
+        .kop-text p.kop-kontak a {
+            color: #1e3a8a;
+            text-decoration: underline;
+        }
+
+        /* Judul Laporan */
+        .judul-laporan {
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .judul-laporan h3 {
+            font-size: 12pt;
+            margin: 0;
+            font-weight: bold;
+            text-transform: uppercase;
+            text-decoration: underline;
+            letter-spacing: 0.3px;
+        }
+        .judul-laporan p.periode {
+            font-size: 9.5pt;
+            font-weight: bold;
+            color: #1e3a8a;
+            margin: 3px 0 2px 0;
+        }
+        .judul-laporan p.subjudul {
+            font-size: 8.5pt;
+            margin: 0;
+            color: #444;
+        }
+
+
+        /* Table Styling */
+        table.data-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-bottom: 15px;
+            font-size: 8.5pt;
+            table-layout: fixed;
         }
-        .data-table th {
-            background-color: #172554;
-            color: #ffffff;
-            font-size: 9px;
-            text-transform: uppercase;
-            padding: 6px 5px;
-            border: 1px solid #172554;
-            text-align: left;
-        }
-        .data-table td {
-            padding: 5px;
-            border: 1px solid #cbd5e1;
-            font-size: 10px;
+        table.data-table th, table.data-table td {
+            border: 1px solid #333;
+            padding: 5px 6px;
             vertical-align: top;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
-        .data-table tr:nth-child(even) {
-            background-color: #f8fafc;
+        table.data-table th {
+            background-color: #e2e8f0;
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+            font-size: 8pt;
         }
+        table.data-table tr {
+            page-break-inside: avoid;
+        }
+        
+        /* Personel list */
         ul.personel-list {
             margin: 0;
-            padding-left: 12px;
+            padding-left: 14px;
         }
         ul.personel-list li {
             margin-bottom: 2px;
-            font-size: 9px;
-            line-height: 1.25;
         }
-        .footer {
-            margin-top: 30px;
+
+        /* Tanda Tangan */
+        .ttd-container {
             width: 100%;
+            margin-top: 20px;
+            page-break-inside: avoid;
         }
-        .footer table {
-            width: 100%;
-        }
-        .footer td {
+        .ttd-box {
+            float: right;
+            width: 280px;
             text-align: center;
-            font-size: 10px;
+            font-size: 9pt;
+            line-height: 1.35;
+        }
+        .ttd-space {
+            height: 55px;
+        }
+        .ttd-nama {
+            font-weight: bold;
+            text-decoration: underline;
+        }
+        .clear {
+            clear: both;
         }
     </style>
 </head>
 <body>
 
-    <!-- KOP SURAT RESMI PEMERINTAH DAERAH KABUPATEN BONE BOLANGO -->
-    @include('components.kop-surat', ['isPdf' => true])
+    <!-- KOP SURAT RESMI PEMERINTAH DAERAH KABUPATEN BONE BOLANGO (SIMETRIS RATA TENGAH) -->
+    @include('components.kop-surat-pdf')
 
     <!-- JUDUL LAPORAN -->
-    <div style="text-align: center; margin-bottom: 12px;">
-        <h3 style="margin: 0; font-size: 13px; color: #172554; text-transform: uppercase; font-weight: bold;">LAPORAN REKAPITULASI PENERBITAN NOMOR SURAT{{ !empty($filterJenisLabel) ? ' — ' . $filterJenisLabel : '' }}</h3>
-        <p style="margin: 3px 0 0 0; font-size: 9.5px; color: #64748b;">Arsip Penerbitan Surat Perintah Tugas (SPT) dan Surat Perintah Perjalanan Dinas (SPPD)</p>
+    <div class="judul-laporan">
+        <h3>LAPORAN REKAPITULASI PENERBITAN NOMOR SURAT</h3>
+        <p class="periode">{{ $periodeText ?? 'Rekapitulasi Nomor Surat Keseluruhan' }}</p>
+        <p class="subjudul">Arsip Penerbitan Surat Perintah Tugas (SPT) dan Surat Perintah Perjalanan Dinas (SPPD)</p>
     </div>
 
-    <div class="meta-info" style="text-align: right; margin-bottom: 10px;">
-        <span style="font-size: 9.5px; color: #475569;"><strong>Tanggal Cetak:</strong> {{ date('d F Y') }}</span>
-    </div>
-
-    <!-- RINGKASAN METRIK -->
-    <table class="rekap-cards">
-        <tr>
-            <td style="width: 33.33%;">
-                <div class="card-title">Total Nomor SPT</div>
-                <div class="card-value" style="color: #172554;">{{ $totalSpt ?? 0 }} Dokumen</div>
-            </td>
-            <td style="width: 33.33%;">
-                <div class="card-title">Total Nomor SPPD</div>
-                <div class="card-value" style="color: #9d174d;">{{ $totalSppd ?? 0 }} Dokumen</div>
-            </td>
-            <td style="width: 33.33%;">
-                <div class="card-title">Total Bulan Ini</div>
-                <div class="card-value" style="color: #3B82F6;">{{ $totalBulanIni ?? 0 }} Dokumen</div>
-            </td>
-        </tr>
-    </table>
-
-    <!-- TABEL REKAPITULASI KESELURUHAN (KOLOM SPT & SPPD BERDAMPINGAN) -->
+    <!-- TABEL REKAPITULASI KESELURUHAN (LANDSCAPE & PROPORSI KOLOM RAPI) -->
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 4%; text-align: center;">No</th>
-                <th style="width: 10%; text-align: center;">Tanggal</th>
-                <th style="width: 17%;">Nomor Surat SPT</th>
-                <th style="width: 17%;">Nomor Surat SPPD</th>
-                <th style="width: 20%;">Perihal / Uraian Tugas</th>
-                <th style="width: 13%;">Tujuan</th>
-                <th style="width: 14%;">Pegawai yang Ditugaskan</th>
-                <th style="width: 5%; text-align: center;">Ket</th>
+                <th style="width: 3.5%; text-align: center;">No</th>
+                <th style="width: 8.5%; text-align: center;">Tanggal</th>
+                <th style="width: 16%;">Nomor Surat SPT</th>
+                <th style="width: 16%;">Nomor Surat SPPD</th>
+                <th style="width: 22%;">Perihal / Uraian Tugas</th>
+                <th style="width: 11%;">Tujuan</th>
+                <th style="width: 13%;">Pegawai yang Ditugaskan</th>
+                <th style="width: 10%; text-align: center;">Keterangan</th>
             </tr>
         </thead>
         <tbody>
@@ -136,25 +202,29 @@
             <tr>
                 <td style="text-align: center;">{{ $index + 1 }}</td>
                 <td style="text-align: center;">{{ \Carbon\Carbon::parse($item->tgl_surat)->translatedFormat('d/m/Y') }}</td>
-                <td>
-                    <strong style="font-family: 'Courier New', Courier, monospace; color: #1e3a8a; font-size: 9.5px;">{{ $item->nomor_surat }}</strong>
+                <td style="font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #1e3a8a;">
+                    {{ $item->nomor_surat }}
                 </td>
-                <td>
-                    @if($item->has_sppd)
-                        @php
-                            $nomorSppd = str_starts_with($item->nomor_surat, '555') 
-                                ? str_replace('555/', '090/', $item->nomor_surat) 
-                                : preg_replace('/^[^\/]+/', '090', $item->nomor_surat);
-                        @endphp
-                        <span style="font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #9d174d; font-size: 9.5px;">{{ $nomorSppd }}</span>
+                <td style="font-family: 'Courier New', Courier, monospace; font-weight: bold;">
+                    @if($item->has_sppd && $item->pegawais && $item->pegawais->count() > 0)
+                        <ul class="personel-list" style="list-style-type: none; padding-left: 0; margin: 0;">
+                            @foreach($item->pegawais as $pegawai)
+                                @php
+                                    $nomorSppd = $pegawai->pivot->nomor_sppd ?? '-';
+                                @endphp
+                                <li style="color: #9d174d; margin-bottom: 2px;">{{ $nomorSppd }}</li>
+                            @endforeach
+                        </ul>
+                    @elseif($item->has_sppd)
+                        <span style="color: #9d174d;">SPPD</span>
                     @else
-                        <span style="color: #94a3b8; text-align: center; display: block;">-</span>
+                        <span style="color: #666; font-weight: normal; text-align: center; display: block;">-</span>
                     @endif
                 </td>
                 <td>
                     <strong>{{ $item->perihal }}</strong>
                     @if($item->uraian)
-                        <br><span style="font-size: 8.5px; color: #64748b;">{{ $item->uraian }}</span>
+                        <br><span style="font-size: 7.5pt; color: #444;">{{ $item->uraian }}</span>
                     @endif
                 </td>
                 <td>{{ $item->tujuan }}</td>
@@ -162,36 +232,35 @@
                     @if($item->pegawais && $item->pegawais->count() > 0)
                         <ul class="personel-list">
                             @foreach($item->pegawais as $pegawai)
-                                <li>{{ $pegawai->nama }} <span style="font-size: 8px; color: #64748b;">(NIP. {{ $pegawai->nip }})</span></li>
+                                <li>{{ $pegawai->nama }} <span style="font-size: 7.5pt; color: #555;">(NIP. {{ $pegawai->nip }})</span></li>
                             @endforeach
                         </ul>
                     @else
-                        <span style="color: #94a3b8; font-style: italic;">-</span>
+                        <span style="color: #888; font-style: italic;">-</span>
                     @endif
                 </td>
-                <td style="text-align: center;">{{ $item->keterangan ?? '-' }}</td>
+                <td style="text-align: {{ !empty($item->keterangan) ? 'left' : 'center' }};">
+                    {{ $item->keterangan ?? '-' }}
+                </td>
             </tr>
             @empty
             <tr>
-                <td colspan="8" style="text-align: center; font-style: italic; color: #94a3b8; padding: 15px;">Belum ada data rekapitulasi nomor surat.</td>
+                <td colspan="8" style="text-align: center; font-style: italic; color: #777;">Belum ada data rekapitulasi nomor surat.</td>
             </tr>
             @endforelse
         </tbody>
     </table>
 
     <!-- TANDA TANGAN PENGESAHAN -->
-    <div class="footer">
-        <table>
-            <tr>
-                <td style="width: 60%;"></td>
-                <td style="width: 40%;">
-                    <p>Suwawa, {{ \Carbon\Carbon::now()->translatedFormat('d F Y') }}</p>
-                    <p style="margin-bottom: 50px;"><strong>Kepala Dinas Komunikasi dan Informatika<br>Kabupaten Bone Bolango</strong></p>
-                    <p><u><strong>Drs. H. Syamsuddin, M.Si</strong></u></p>
-                    <p>NIP. 196502121990031004</p>
-                </td>
-            </tr>
-        </table>
+    <div class="ttd-container">
+        <div class="ttd-box">
+            Bone Bolango, {{ \Carbon\Carbon::now()->translatedFormat('d F Y') }}<br>
+            <strong>Kepala Dinas Komunikasi dan Informatika<br>Kabupaten Bone Bolango</strong>
+            <div class="ttd-space"></div>
+            <div class="ttd-nama">Drs. H. Syamsuddin, M.Si</div>
+            <div>NIP. 196502121990031004</div>
+        </div>
+        <div class="clear"></div>
     </div>
 
 </body>

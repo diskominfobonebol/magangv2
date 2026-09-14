@@ -13,9 +13,17 @@
     --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
     --color-primary: var(--color-primary);
+    --color-primary-hover: var(--color-primary-hover);
+    --color-primary-active: var(--color-primary-active);
     --color-blue-light: var(--color-blue-light);
+    --color-blue-subtle: var(--color-blue-subtle);
     --color-white: var(--color-white);
     --color-pink: var(--color-pink);
+    --color-pink-hover: var(--color-pink-hover);
     --color-pink-light: var(--color-pink-light);
+    --color-pink-subtle: var(--color-pink-subtle);
     --color-navy: var(--color-navy);
+    --color-navy-light: var(--color-navy-light);
+    --color-navy-subtle: var(--color-navy-subtle);
 }
+

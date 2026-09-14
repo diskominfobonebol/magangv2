@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Http\Requests\StorePegawaiRequest;
+use App\Http\Requests\UpdatePegawaiRequest;
 use App\Models\Pegawai;
 use App\Models\User; 
 use App\Models\KenpaBerkala;
@@ -18,8 +20,9 @@ class KenaikanPangkatController extends Controller
         $status = $request->input('status');
         $acc = $request->input('acc');
 
-        // Query dasar untuk Pegawai (kecuali akun admin)
+        // Query dasar untuk Pegawai ASN (kecuali akun admin dan saring khusus ASN)
         $queryPegawaiAsli = Pegawai::with('kenpaBerkalas')
+            ->where('kategori_pegawai', 'ASN')
             ->whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai Biasa', 'Pegawai']);
 
         // Filter Pencarian Nama atau NIP
@@ -51,8 +54,10 @@ class KenaikanPangkatController extends Controller
             });
         }
 
-        // Hitung Metrik Kotak Atas secara Dinamis dari seluruh data KenpaBerkala
-        $allKenpa = KenpaBerkala::all();
+        // Hitung Metrik Kotak Atas secara Dinamis dari data KenpaBerkala khusus Pegawai ASN
+        $allKenpa = KenpaBerkala::whereHas('pegawai', function($q) {
+            $q->where('kategori_pegawai', 'ASN');
+        })->get();
         $now = Carbon::now();
 
         $mendekatiJt = 0;
@@ -77,7 +82,9 @@ class KenaikanPangkatController extends Controller
             }
         }
 
-        $totalPegawai = Pegawai::whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai Biasa', 'Pegawai'])->count();
+        $totalPegawai = Pegawai::where('kategori_pegawai', 'ASN')
+            ->whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai Biasa', 'Pegawai'])
+            ->count();
 
         $metrics = [
             'total' => $totalPegawai,
@@ -87,11 +94,11 @@ class KenaikanPangkatController extends Controller
             'berkas_lengkap' => $berkasLengkap,
         ];
 
-       // Hitung Distribusi Status Pengajuan Berdasarkan 3 Status Riil
+       // Hitung Distribusi Status Pengajuan Khusus Pegawai ASN
         $progress = [
-            'menunggu' => KenpaBerkala::where('status_acc', 'Menunggu')->count(),
-            'disetujui' => KenpaBerkala::whereIn('status_acc', ['Disetujui', 'ACC'])->count(),
-            'ditolak' => KenpaBerkala::whereIn('status_acc', ['Ditolak', 'Kembalikan'])->count(),
+            'menunggu' => KenpaBerkala::whereHas('pegawai', fn($q) => $q->where('kategori_pegawai', 'ASN'))->where('status_acc', 'Menunggu')->count(),
+            'disetujui' => KenpaBerkala::whereHas('pegawai', fn($q) => $q->where('kategori_pegawai', 'ASN'))->whereIn('status_acc', ['Disetujui', 'ACC'])->count(),
+            'ditolak' => KenpaBerkala::whereHas('pegawai', fn($q) => $q->where('kategori_pegawai', 'ASN'))->whereIn('status_acc', ['Ditolak', 'Kembalikan'])->count(),
         ];
         
         $total_progress = array_sum($progress);
@@ -104,17 +111,8 @@ class KenaikanPangkatController extends Controller
         return view('kenaikan-pangkat.index', compact('metrics', 'progress', 'total_progress', 'pegawai'));
     }
 
-    public function store(Request $request)
+    public function store(StorePegawaiRequest $request)
     {
-        $request->validate([
-            'nama' => 'required|string|max:255',
-            'nip' => 'required|string|unique:pegawais,nip',
-            'jabatan' => 'required|string',
-            'no_wa' => 'required|string|max:15',
-            'password' => 'required|string|min:6',
-            'jenis' => 'required|in:Kenaikan Pangkat,Berkala,Keduanya'
-        ]);
-
         try {
             $user = User::create([
                 'name' => $request->nama,
@@ -128,6 +126,7 @@ class KenaikanPangkatController extends Controller
                 'nip' => $request->nip,
                 'nama' => $request->nama,
                 'jabatan' => $request->jabatan,
+                'kategori_pegawai' => 'ASN', // Jalur Kenpa/Berkala dikhususkan untuk ASN
                 'no_wa' => $request->no_wa,
                 'pangkat_golongan' => '-', 
             ]);
@@ -158,36 +157,23 @@ class KenaikanPangkatController extends Controller
 
     public function edit($id)
     {
-        $pegawai = Pegawai::with('kenpaBerkalas')->findOrFail($id);
+        $pegawai = Pegawai::where('kategori_pegawai', 'ASN')->with('kenpaBerkalas')->findOrFail($id);
         $kenpa = $pegawai->kenpaBerkalas->first();
 
         return view('kenaikan-pangkat.edit', compact('pegawai', 'kenpa'));
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdatePegawaiRequest $request, $id)
     {
-        $pegawai = Pegawai::findOrFail($id);
+        $pegawai = Pegawai::where('kategori_pegawai', 'ASN')->findOrFail($id);
         $kenaikan = $pegawai->kenpaBerkalas->first();
-
-        $request->validate([
-            'nama' => 'required|string|max:255',
-            'nip' => 'required|string|unique:pegawais,nip,' . $pegawai->id,
-            'jabatan' => 'required|string',
-            'no_wa' => 'required|string|max:15',
-            'jenis' => 'required|in:Kenaikan Pangkat,Berkala,Keduanya',
-            'tgl_terakhir' => 'nullable|date',
-            'status' => 'required|in:Aktif,Tidak Aktif',
-            'progres_berkas' => 'nullable|integer|min:0|max:100', // <-- Ubah dari required menjadi nullable
-            'status_acc' => 'required|in:Menunggu,Disetujui,Ditolak',
-            'pangkat_golongan' => 'nullable|string',
-            'keterangan' => 'nullable|string',
-        ]);
 
         try {
             $pegawai->update([
                 'nama' => $request->nama,
                 'nip' => $request->nip,
                 'jabatan' => $request->jabatan,
+                'kategori_pegawai' => $request->kategori_pegawai,
                 'no_wa' => $request->no_wa,
                 'pangkat_golongan' => $request->pangkat_golongan,
             ]);
@@ -236,7 +222,15 @@ class KenaikanPangkatController extends Controller
 
     public function show($id)
     {
-        $pegawai = Pegawai::with(['kenpaBerkalas', 'dokumenPegawais'])->findOrFail($id);
+        $pegawai = Pegawai::where('kategori_pegawai', 'ASN')->with([
+            'kenpaBerkalas',
+            'dokumenPegawais',
+            'surats' => function($q) {
+                $q->with(['jenisSurat', 'pegawais'])
+                  ->latest('tgl_surat')
+                  ->latest('id');
+            }
+        ])->findOrFail($id);
         $kenpa = $pegawai->kenpaBerkalas->first();
 
         return view('kenaikan-pangkat.show', compact('pegawai', 'kenpa'));
@@ -287,7 +281,7 @@ class KenaikanPangkatController extends Controller
     public function destroy($id)
     {
         try {
-            $pegawai = Pegawai::with(['kenpaBerkalas', 'dokumenPegawais'])->findOrFail($id);
+            $pegawai = Pegawai::where('kategori_pegawai', 'ASN')->with(['kenpaBerkalas', 'dokumenPegawais'])->findOrFail($id);
 
             // 1. Hapus data relasi pengajuan kenaikan pangkat / berkala jika ada
             if ($pegawai->kenpaBerkalas()->exists()) {

@@ -5,6 +5,18 @@
 @section('content')
 <div class="max-w-7xl mx-auto space-y-6" x-data="suratIndexManager()">
     
+    <!-- Sub-Tab Navigasi Modul Surat Menyurat -->
+    <div class="flex items-center gap-2 border-b border-blue-200/60 pb-3">
+        <a href="{{ route('surat.index') }}" class="px-5 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 bg-primary text-white shadow-md shadow-blue-500/25">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+            Surat Keluar (SPT & SPPD)
+        </a>
+        <a href="{{ route('surat-masuk.index') }}" class="px-5 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 bg-white text-slate-600 hover:text-primary hover:bg-blue-50/60 border border-blue-200/50 shadow-sm">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+            Surat Masuk
+        </a>
+    </div>
+
     <!-- TAMPILAN 1: TABEL DAN REKAPITULASI SURAT -->
     <div x-show="viewMode === 'table'" class="space-y-6">
         <!-- Header Utama & Tombol Aksi -->
@@ -14,15 +26,9 @@
                 <p class="text-slate-500 mt-1 text-sm">Kelola dan telusuri arsip penerbitan nomor surat instansi.</p>
             </div>
             <div class="flex items-center gap-3">
-                @php
-                    $hasActiveSuratFilter = request()->filled('filter_jenis') || request()->filled('jenis') || request()->filled('search') || request()->filled('year') || request()->filled('start_date') || request()->filled('end_date');
-                @endphp
-                <a href="{{ route('surat.rekap.exportPdf', request()->query()) }}" target="_blank" class="btn-pill-secondary px-5 py-2.5 text-xs font-bold gap-2 shadow-sm flex items-center hover:text-primary transition-all {{ $hasActiveSuratFilter ? 'ring-2 ring-pink-400/40 border-pink-300 bg-pink-50/40' : '' }}" title="{{ $hasActiveSuratFilter ? 'Export PDF sesuai filter yang sedang aktif' : 'Export seluruh data rekapitulasi ke PDF' }}">
+                <a href="{{ route('surat.rekap.exportPdf', request()->query()) }}" target="_blank" class="btn-pill-secondary px-5 py-2.5 text-xs font-bold gap-2 shadow-sm flex items-center hover:text-primary transition-all">
                     <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    <span>Export Rekapitulasi PDF</span>
-                    @if($hasActiveSuratFilter)
-                        <span class="bg-pink-500 text-white text-[9px] px-2 py-0.5 rounded-full font-extrabold ml-0.5">Filter Aktif</span>
-                    @endif
+                    Export Rekapitulasi PDF
                 </a>
                 @if(auth()->user()->role_id == 2 || auth()->user()->role_id == 1)
                 <a href="{{ route('surat.create') }}" class="btn-pill-primary px-5 py-2.5 text-xs font-bold gap-2 shadow-lg shadow-blue-500/25 flex items-center">
@@ -91,7 +97,7 @@
                     <input type="date" name="end_date" onchange="this.form.submit()" value="{{ request('end_date') }}" class="form-input">
                 </div>
 
-                <div class="md:col-span-12 flex justify-between items-center pt-1 border-t border-blue-100/50">
+                <div class="md:col-span-12 flex justify-between items-center pt-1">
                     <span class="text-xs text-slate-400 font-medium">Tekan <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono">Enter</kbd> atau pilih opsi untuk menyaring data.</span>
                     <a href="{{ route('surat.index') }}" class="text-xs text-primary hover:underline font-bold flex items-center gap-1">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
@@ -125,7 +131,7 @@
                         📄
                     </div>
                 </div>
-                <div class="mt-4 pt-3 border-t border-blue-100/60 flex items-center justify-between text-xs text-slate-500">
+                <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-500">
                     <span class="font-medium text-slate-600">Surat Perintah Tugas</span>
                     <span class="text-primary font-bold {{ $isSptActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100' }} transition-opacity flex items-center gap-1">
                         {{ $isSptActive ? '✕ Batalkan Filter' : 'Filter SPT →' }}
@@ -155,7 +161,7 @@
                         ⚡
                     </div>
                 </div>
-                <div class="mt-4 pt-3 border-t border-pink-100/60 flex items-center justify-between text-xs text-slate-500">
+                <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-500">
                     <span class="font-medium text-slate-600">Surat Perjalanan Dinas</span>
                     <span class="text-pink-600 font-bold {{ $isSppdActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100' }} transition-opacity flex items-center gap-1">
                         {{ $isSppdActive ? '✕ Batalkan Filter' : 'Filter SPPD →' }}
@@ -176,7 +182,7 @@
                         📅
                     </div>
                 </div>
-                <div class="mt-4 pt-3 border-t border-indigo-100/60 flex items-center justify-between text-xs text-slate-500">
+                <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-500">
                     <span class="font-medium text-slate-600">Periode {{ \Carbon\Carbon::now()->translatedFormat('F Y') }}</span>
                     <span class="text-indigo-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                         Lihat Filter &rarr;
@@ -199,10 +205,6 @@
                     <span class="inline-flex items-center text-xs font-bold text-pink-600 bg-pink-50 px-3 py-1 rounded-full border border-pink-200/60">
                         {{ $totalSppd ?? 0 }} Total SPPD
                     </span>
-                    <a href="{{ route('surat.rekap.exportPdf', request()->query()) }}" target="_blank" class="inline-flex items-center text-xs font-bold text-slate-600 hover:text-pink-600 bg-white hover:bg-pink-50 px-3 py-1 rounded-full border border-slate-200 hover:border-pink-300 transition gap-1 shadow-2xs" title="Export data tabel saat ini ke PDF">
-                        <svg class="w-3.5 h-3.5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <span>PDF</span>
-                    </a>
                 </div>
             </div>
             
@@ -220,7 +222,7 @@
                             <th class="py-3.5 px-3 text-center">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-blue-50 text-sm">
+                    <tbody class="text-sm">
                         @forelse($surats ?? [] as $item)
                         @php
                             // Siapkan data JSON untuk panel "Lihat"
@@ -338,11 +340,10 @@
                 </table>
             </div>
 
-            @if(isset($surats) && $surats->hasPages())
-            <div class="mt-4 pt-3 border-t border-blue-100/50">
+            <!-- Pagination -->
+            <div class="px-2 py-4 border-t border-blue-200/40">
                 {{ $surats->links() }}
             </div>
-            @endif
         </div>
     </div>
 
@@ -488,8 +489,13 @@
                         <!-- Mode Edit: Input Textarea Keterangan -->
                         <div x-show="isEditing" 
                              class="bg-blue-50/40 border-l-4 border-primary rounded-r-2xl p-4 shadow-sm space-y-2">
-                            <label class="text-[11px] font-bold uppercase tracking-wider text-primary block">Keterangan tambahan &middot; opsional</label>
-                            <textarea name="keterangan" rows="2" x-model="activeSurat.keterangan" placeholder="Keterangan tambahan jika diperlukan (opsional)..." class="w-full rounded-xl border border-blue-200 p-2.5 focus:border-blue-500 focus:outline-none text-xs text-navy bg-white"></textarea>
+                            <div class="flex items-center justify-between">
+                                <label class="text-[11px] font-bold uppercase tracking-wider text-primary block">Keterangan tambahan &middot; opsional</label>
+                                <span class="text-[11px] font-semibold" :class="(activeSurat.keterangan || '').length > 140 ? 'text-amber-600 font-bold' : 'text-slate-400'">
+                                    <span x-text="(activeSurat.keterangan || '').length"></span>/150 karakter
+                                </span>
+                            </div>
+                            <textarea name="keterangan" rows="2" maxlength="150" x-model="activeSurat.keterangan" placeholder="Keterangan tambahan jika diperlukan (opsional, maks 150 karakter)..." class="w-full rounded-xl border border-blue-200 p-2.5 focus:border-blue-500 focus:outline-none text-xs text-navy bg-white"></textarea>
                         </div>
 
                     </div>
@@ -539,8 +545,14 @@
                                     <template x-for="p in filteredPegawais()" :key="'opt-' + p.id">
                                         <div @mousedown.prevent="addPegawai(p)" class="p-3 hover:bg-blue-50/70 cursor-pointer transition-colors flex items-center justify-between">
                                             <div>
-                                                <div class="text-xs font-bold text-navy" x-text="p.nama"></div>
-                                                <div class="text-[11px] text-slate-500" x-text="'NIP. ' + (p.nip || '-') + ' • ' + (p.jabatan || '-')"></div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-xs font-bold text-navy" x-text="p.nama"></span>
+                                                    <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold"
+                                                          :class="p.kategori_pegawai === 'P3K' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'"
+                                                          x-text="p.kategori_pegawai || 'ASN'">
+                                                    </span>
+                                                </div>
+                                                <div class="text-[11px] text-slate-500 mt-0.5" x-text="'NIP. ' + (p.nip || '-') + ' • ' + (p.jabatan || '-')"></div>
                                             </div>
                                             <span class="text-xs font-bold text-primary bg-blue-50 hover:bg-primary hover:text-white px-2.5 py-1 rounded-lg border border-blue-200 transition-all flex items-center gap-1">
                                                 + Tambah
@@ -571,7 +583,7 @@
                                         <th x-show="isEditing" class="py-3 px-3 text-center w-16">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-blue-50 text-sm">
+                                <tbody class="text-sm">
                                     <template x-for="(pegawai, index) in (activeSurat.pegawais || [])" :key="pegawai.id">
                                         <tr class="hover:bg-blue-50/30 transition-colors">
                                             <td class="py-3 px-2 font-semibold text-slate-400 text-xs" x-text="index + 1"></td>
@@ -712,55 +724,62 @@
     <!-- MODAL KONFIRMASI HAPUS SURAT -->
     <div x-show="isDeleteModalOpen" 
          x-cloak 
-         style="display: none;"
-         class="fixed inset-0 z-50 overflow-y-auto" 
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 sm:p-6" 
+         @keydown.escape.window="cancelDelete()"
          aria-labelledby="modal-delete-title" 
          role="dialog" 
          aria-modal="true">
         
         <!-- Backdrop Blur -->
-        <div class="fixed inset-0 transition-opacity bg-slate-900/60 backdrop-blur-sm" @click="cancelDelete()"></div>
+        <div x-show="isDeleteModalOpen" 
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
+             @click="cancelDelete()"></div>
 
-        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div x-show="isDeleteModalOpen" 
-                 x-transition:enter="ease-out duration-300"
-                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                 x-transition:leave="ease-in duration-200"
-                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 class="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-3xl border border-rose-100 space-y-4">
-                
-                <div class="flex items-center gap-3 text-rose-600">
-                    <div class="w-10 h-10 rounded-2xl bg-rose-100 flex items-center justify-center flex-shrink-0">
-                        <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                    </div>
-                    <div>
-                        <h3 class="text-base font-bold text-navy" id="modal-delete-title">Hapus Arsip Surat</h3>
-                        <p class="text-xs text-slate-500">Tindakan ini tidak dapat dibatalkan</p>
-                    </div>
+        <!-- Modal Dialog Box -->
+        <div x-show="isDeleteModalOpen" 
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             class="relative bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-rose-100 space-y-4 z-10 text-left overflow-hidden">
+            
+            <div class="flex items-center gap-3 text-rose-600">
+                <div class="w-10 h-10 rounded-2xl bg-rose-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </div>
-
-                <div class="bg-rose-50/70 border border-rose-100 rounded-2xl p-4 text-xs text-slate-600 leading-relaxed">
-                    Apakah Anda yakin ingin menghapus arsip surat dengan nomor:
-                    <div class="font-mono font-bold text-rose-600 text-sm mt-1" x-text="deleteSuratNomor"></div>
+                <div>
+                    <h3 class="text-base font-bold text-navy" id="modal-delete-title">Hapus Arsip Surat</h3>
+                    <p class="text-xs text-slate-500">Tindakan ini tidak dapat dibatalkan</p>
                 </div>
-
-                <div class="flex items-center justify-end gap-3 pt-2">
-                    <button type="button" @click="cancelDelete()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer">
-                        Batal
-                    </button>
-                    <form :action="'/surat/' + deleteSuratId" method="POST" class="inline">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-500/25 flex items-center gap-1.5 transition-all cursor-pointer">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            Ya, Hapus
-                        </button>
-                    </form>
-                </div>
-
             </div>
+
+            <div class="bg-rose-50/70 border border-rose-100 rounded-2xl p-4 text-xs text-slate-600 leading-relaxed">
+                Apakah Anda yakin ingin menghapus arsip surat dengan nomor:
+                <div class="font-mono font-bold text-rose-600 text-sm mt-1" x-text="deleteSuratNomor"></div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button type="button" @click="cancelDelete()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer">
+                    Batal
+                </button>
+                <form :action="'/surat/' + deleteSuratId" method="POST" class="inline">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-500/25 flex items-center gap-1.5 transition-all cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        Ya, Hapus
+                    </button>
+                </form>
+            </div>
+
         </div>
     </div>
 
@@ -851,6 +870,7 @@
                     if (!query) return true;
                     return (p.nama && p.nama.toLowerCase().includes(query)) ||
                            (p.nip && p.nip.includes(query)) ||
+                           (p.kategori_pegawai && p.kategori_pegawai.toLowerCase().includes(query)) ||
                            (p.jabatan && p.jabatan.toLowerCase().includes(query));
                 });
             },

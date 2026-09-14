@@ -49,7 +49,11 @@ class PegawaiSeeder extends Seeder
         ];
 
         foreach ($pegawai as $data) {
-            Pegawai::create($data);
+            $data['kategori_pegawai'] = $data['kategori_pegawai'] ?? 'ASN';
+            Pegawai::updateOrCreate(
+                ['nip' => $data['nip']],
+                $data
+            );
         }
     }
 }

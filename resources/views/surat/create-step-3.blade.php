@@ -42,6 +42,19 @@
         </a>
     </div>
 
+    <!-- Alert Notifikasi Error -->
+    @if(session('error'))
+    <div class="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-bold flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            <span>{{ session('error') }}</span>
+        </div>
+        <button type="button" onclick="this.parentElement.remove()" class="text-rose-500 hover:text-rose-800">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+    </div>
+    @endif
+
     <!-- Stepper -->
     <div class="py-2 flex items-center justify-center">
         <!-- Step 1 (Completed) -->
@@ -74,7 +87,17 @@
     </div>
 
     <!-- Form Container -->
-    <div class="bg-card-gradient rounded-3xl shadow-xl shadow-blue-900/5 border border-blue-200/50 overflow-hidden" x-data="{ pilihanSppd: null, tempPilihan: 'ya' }">
+    <div class="bg-card-gradient rounded-3xl shadow-xl shadow-blue-900/5 border border-blue-200/50 overflow-hidden" 
+         x-data="{ 
+             pilihanSppd: null, 
+             tempPilihan: 'ya',
+             simpanDraft(e) {
+                 e.preventDefault();
+                 const form = document.getElementById('form-utama');
+                 form.action = '{{ route('surat.draft') }}';
+                 form.submit();
+             }
+         }">
         <form action="{{ route('surat.store') }}" method="POST" class="p-6 md:p-8" id="form-utama">
             @csrf
             
@@ -145,12 +168,18 @@
                             <ul class="space-y-3">
                                 @if(isset($selectedPegawais) && $selectedPegawais->count() > 0)
                                     @foreach($selectedPegawais as $pegawai)
-                                    <li class="flex justify-between items-center text-sm">
+                                    <li class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl hover:bg-blue-50/40 transition-colors border border-blue-100/50">
                                         <div>
-                                            <span class="font-bold text-navy">{{ $pegawai->nama }}</span>
-                                            <span class="text-slate-500 text-xs ml-2 font-medium">NIP. {{ $pegawai->nip }}</span>
+                                            <span class="font-bold text-navy text-sm">{{ $pegawai->nama }}</span>
+                                            <span class="text-slate-500 text-xs ml-2 font-medium">NIP. {{ $pegawai->nip }} &bull; {{ $pegawai->jabatan }}</span>
                                         </div>
-                                        <span class="badge-blue text-xs font-mono px-2.5 py-1 rounded-full font-bold">Auto-Generate</span>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-semibold text-slate-400">No. SPPD:</span>
+                                            <span class="badge-pink text-xs font-mono px-3 py-1 rounded-full font-bold">
+                                                {{ $sppdPreviews[$pegawai->id] ?? '090/001/...' }}
+                                            </span>
+                                            <input type="hidden" name="nomor_sppd[{{ $pegawai->id }}]" value="{{ $sppdPreviews[$pegawai->id] ?? '' }}">
+                                        </div>
                                     </li>
                                     @endforeach
                                 @else
@@ -174,8 +203,8 @@
                     </a>
                 </div>
                 <div class="flex items-center gap-3">
-                    <!-- Tombol Simpan Draft (Men-trigger form tersembunyi di bawah) -->
-                    <button type="button" onclick="document.getElementById('form-simpan-draft').submit();" class="btn-pill-secondary px-5 py-2.5 text-xs font-bold cursor-pointer">
+                    <!-- Tombol Simpan Draft -->
+                    <button type="button" @click="simpanDraft($event)" class="btn-pill-secondary px-5 py-2.5 text-xs font-bold cursor-pointer">
                         Simpan Draft
                     </button>
                     <!-- Tombol Terbitkan (Milik form utama) -->
@@ -184,11 +213,6 @@
                     </button>
                 </div>
             </div>
-        </form>
-
-        <!-- Form Tersembunyi Khusus untuk Simpan Draft -->
-        <form id="form-simpan-draft" action="{{ route('surat.draft') }}" method="POST" style="display: none;">
-            @csrf
         </form>
     </div>
 </div>

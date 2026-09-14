@@ -55,32 +55,39 @@
                     <input type="text" name="jabatan" value="{{ old('jabatan', $pegawai->jabatan) }}" required class="form-input">
                 </div>
 
-                <!-- Pangkat / Golongan -->
+                <!-- Kategori Pegawai -->
                 <div>
-                    <label class="form-label">Pangkat / Golongan</label>
-                    <input type="text" name="pangkat_golongan" list="list-pangkat" value="{{ old('pangkat_golongan', $pegawai->pangkat_golongan) }}" placeholder="Ketik atau pilih pangkat..." class="form-input">
-                    
-                    <datalist id="list-pangkat">
-                        <option value="Juru Muda / I.a">
-                        <option value="Juru Muda Tingkat I / I.b">
-                        <option value="Juru / I.c">
-                        <option value="Juru Tingkat I / I.d">
-                        <option value="Pengatur Muda / II.a">
-                        <option value="Pengatur Muda Tingkat I / II.b">
-                        <option value="Pengatur / II.c">
-                        <option value="Pengatur Tingkat I / II.d">
-                        <option value="Penata Muda / III.a">
-                        <option value="Penata Muda Tingkat I / III.b">
-                        <option value="Penata / III.c">
-                        <option value="Penata Tingkat I / III.d">
-                        <option value="Pembina / IV.a">
-                        <option value="Pembina Tingkat I / IV.b">
-                        <option value="Pembina Utama Muda / IV.c">
-                        <option value="Pembina Utama Madya / IV.d">
-                        <option value="Pembina Utama / IV.e">
-                    </datalist>
-                    <p class="text-[10px] text-slate-500 mt-1">*Ketik untuk mencari atau klik untuk memilih opsi standar.</p>
+                    <label class="form-label">Kategori Pegawai</label>
+                    <input type="text" value="ASN (PNS)" readonly class="form-input bg-blue-50/60 font-bold text-navy cursor-not-allowed">
+                    <input type="hidden" name="kategori_pegawai" value="ASN">
                 </div>
+            </div>
+
+            <!-- Pangkat / Golongan -->
+            <div>
+                <label class="form-label">Pangkat / Golongan</label>
+                <input type="text" name="pangkat_golongan" list="list-pangkat" value="{{ old('pangkat_golongan', $pegawai->pangkat_golongan) }}" placeholder="Ketik atau pilih pangkat..." class="form-input">
+                
+                <datalist id="list-pangkat">
+                    <option value="Juru Muda / I.a">
+                    <option value="Juru Muda Tingkat I / I.b">
+                    <option value="Juru / I.c">
+                    <option value="Juru Tingkat I / I.d">
+                    <option value="Pengatur Muda / II.a">
+                    <option value="Pengatur Muda Tingkat I / II.b">
+                    <option value="Pengatur / II.c">
+                    <option value="Pengatur Tingkat I / II.d">
+                    <option value="Penata Muda / III.a">
+                    <option value="Penata Muda Tingkat I / III.b">
+                    <option value="Penata / III.c">
+                    <option value="Penata Tingkat I / III.d">
+                    <option value="Pembina / IV.a">
+                    <option value="Pembina Tingkat I / IV.b">
+                    <option value="Pembina Utama Muda / IV.c">
+                    <option value="Pembina Utama Madya / IV.d">
+                    <option value="Pembina Utama / IV.e">
+                </datalist>
+                <p class="text-[10px] text-slate-500 mt-1">*Ketik untuk mencari atau klik untuk memilih opsi standar.</p>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

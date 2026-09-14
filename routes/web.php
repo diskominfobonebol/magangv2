@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SuratController;
+use App\Http\Controllers\SuratMasukController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\KenaikanPangkatController;
@@ -48,6 +49,7 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');
         Route::post('/admin/users', [UserController::class, 'store'])->name('admin.users.store');
+        Route::post('/admin/users/{id}/reset-password', [UserController::class, 'resetPassword'])->name('admin.users.reset-password');
         Route::delete('/admin/users/{id}', [UserController::class, 'destroy'])->name('admin.users.destroy');
 
         // Alias kompatibilitas dari sistem-aset-magang
@@ -61,26 +63,44 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/dashboard/master', function () {
             $totalPegawai = \App\Models\Pegawai::count();
             $totalSurat = \App\Models\Surat::count();
+            $totalSuratMasuk = \App\Models\SuratMasuk::count();
             $totalAset = \App\Models\AsetPeralatanMesin::count();
             $totalMagang = \App\Models\PendaftaranMagang::count();
-            return view('dashboard.master', compact('totalPegawai', 'totalSurat', 'totalAset', 'totalMagang'));
+            return view('dashboard.master', compact('totalPegawai', 'totalSurat', 'totalSuratMasuk', 'totalAset', 'totalMagang'));
         })->name('dashboard.master');
         
+        // Surat Keluar (SPT & SPPD)
         Route::get('/surat', [SuratController::class, 'index'])->name('surat.index');
         Route::get('/surat/rekap', [SuratController::class, 'rekapIndex'])->name('surat.rekap');
         Route::get('/surat/rekap/export-pdf', [SuratController::class, 'exportRekapPdf'])->name('surat.rekap.exportPdf');
         Route::get('/surat/api/next-sppd-counter', [SuratController::class, 'getNextSppdCounterApi'])->name('surat.api.nextSppd');
+        Route::post('/surat/api/pegawai-p3k', [SuratController::class, 'storePegawaiP3kApi'])->name('surat.api.storePegawaiP3k');
         Route::get('/surat/create', [SuratController::class, 'create'])->name('surat.create');
         Route::match(['get', 'post'], '/surat/create/step-2', [SuratController::class, 'createStep2'])->name('surat.create.step2');
         Route::match(['get', 'post'], '/surat/create/step-3', [SuratController::class, 'createStep3'])->name('surat.create.step3');
+        Route::match(['get', 'post'], '/surat/draft', [SuratController::class, 'storeDraft'])->name('surat.draft');
+        Route::post('/surat', [SuratController::class, 'store'])->name('surat.store');
+
+        // Surat Masuk (Daftar, Export PDF & Detail untuk Role 1 dan 2)
+        Route::get('/surat/masuk', [SuratMasukController::class, 'index'])->name('surat-masuk.index');
+        Route::get('/surat/masuk/export-pdf', [SuratMasukController::class, 'exportPdf'])->name('surat-masuk.export-pdf');
+        
+        // Rute Mutasi Surat Masuk Khusus Admin Kasubag (Role 2)
+        Route::middleware('role:2')->group(function () {
+            Route::get('/surat/masuk/create', [SuratMasukController::class, 'create'])->name('surat-masuk.create');
+            Route::post('/surat/masuk', [SuratMasukController::class, 'store'])->name('surat-masuk.store');
+            Route::get('/surat/masuk/{id}/edit', [SuratMasukController::class, 'edit'])->name('surat-masuk.edit');
+            Route::put('/surat/masuk/{id}', [SuratMasukController::class, 'update'])->name('surat-masuk.update');
+            Route::delete('/surat/masuk/{id}', [SuratMasukController::class, 'destroy'])->name('surat-masuk.destroy');
+        });
+
+        Route::get('/surat/masuk/{id}', [SuratMasukController::class, 'show'])->name('surat-masuk.show');
+
         Route::get('/surat/{id}', [SuratController::class, 'show'])->name('surat.show');
         Route::get('/surat/{id}/edit', [SuratController::class, 'edit'])->name('surat.edit');
         Route::match(['put', 'post'], '/surat/{id}', [SuratController::class, 'update'])->name('surat.update');
         Route::get('/surat/{id}/download', [SuratController::class, 'downloadPdf'])->name('surat.download');
         Route::get('/surat/{id}/print', [SuratController::class, 'print'])->name('surat.print');
-
-        Route::post('/surat', [SuratController::class, 'store'])->name('surat.store');
-        Route::post('/surat/draft', [SuratController::class, 'storeDraft'])->name('surat.draft');
         Route::delete('/surat/{id}', [SuratController::class, 'destroy'])->name('surat.destroy');
         Route::get('/surat/{id}/download-pdf', [SuratController::class, 'downloadPdf'])->name('surat.downloadPdf');
 
@@ -161,12 +181,15 @@ Route::get('/test-wa', function() {
 });
 
 // ==========================================
-// RUTE UJI COBA PENGINGAT H-1 BULAN
+// RUTE UJI COBA PENGINGAT H-1 BULAN (ASN ONLY)
 // ==========================================
 Route::get('/test-reminder', function() {
     $targetTanggal = Carbon::now()->addMonth()->format('Y-m-d');
 
     $dataPengajuan = KenpaBerkala::with('pegawai')
+        ->whereHas('pegawai', function($q) {
+            $q->where('kategori_pegawai', 'ASN');
+        })
         ->whereDate('tgl_jatuh_tempo', $targetTanggal)
         ->get();
 
