@@ -139,7 +139,7 @@
                     <div class="flex items-center gap-2 mb-1">
                         <p class="text-xs font-bold uppercase tracking-wider {{ $isAllActive ? 'text-primary' : 'text-slate-400 group-hover:text-primary' }} transition-colors">Total Surat Masuk</p>
                         @if($isAllActive)
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary text-white shadow-xs">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary text-white shadow-sm">
                             <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                             Filter Aktif
                         </span>
@@ -170,7 +170,7 @@
                     <div class="flex items-center gap-2 mb-1">
                         <p class="text-xs font-bold uppercase tracking-wider {{ $isMonthActive ? 'text-pink-600' : 'text-slate-400 group-hover:text-pink-600' }} transition-colors">Surat Masuk Bulan Ini</p>
                         @if($isMonthActive)
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-pink-500 text-white shadow-xs">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-pink-500 text-white shadow-sm">
                             <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                             Filter Aktif
                         </span>
@@ -201,7 +201,7 @@
                     <div class="flex items-center gap-2 mb-1">
                         <p class="text-xs font-bold uppercase tracking-wider {{ $isYearActive ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-600' }} transition-colors">Surat Masuk Tahun Ini</p>
                         @if($isYearActive)
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500 text-white shadow-xs">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500 text-white shadow-sm">
                             <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                             Filter Aktif
                         </span>

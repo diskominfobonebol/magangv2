@@ -13,7 +13,11 @@ return new class extends Migration
     {
         Schema::table('surats', function (Blueprint $table) {
             if (!Schema::hasColumn('surats', 'status')) {
-                $table->string('status', 20)->default('Terbit')->after('has_sppd');
+                if (Schema::hasColumn('surats', 'has_sppd')) {
+                    $table->string('status', 20)->default('Terbit')->after('has_sppd');
+                } else {
+                    $table->string('status', 20)->default('Terbit');
+                }
             }
         });
     }

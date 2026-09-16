@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'Dashboard') - Sinosip</title>
+    <title>@yield('title', 'Dashboard') - SIMPATIK & Sinosip</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
@@ -51,11 +51,15 @@
 <body class="app-background antialiased flex h-screen overflow-hidden">
     <!-- Sidebar -->
     <aside class="w-64 bg-sidebar-gradient text-white flex flex-col hidden md:flex h-full z-20 shrink-0 no-print">
-        <div class="h-20 flex items-center px-6 border-b border-white/10">
-            <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg text-white mr-3 shadow-md shadow-blue-500/30" style="background: linear-gradient(135deg, #3B82F6 0%, #EC4899 100%);">S</div>
-            <div>
-                <span class="font-bold text-xl tracking-tight text-white block leading-tight">Sinosip</span>
-                <span class="text-[10px] text-blue-200/80 font-medium">Kominfo Bone Bolango</span>
+        <div class="h-20 flex items-center px-4 border-b border-white/10 gap-3">
+            <div class="flex items-center gap-2 px-2.5 py-1.5 bg-[#0f172a] rounded-2xl shrink-0 shadow-md border border-slate-700/80">
+                <img src="{{ asset('images/logo-pemda-transparent.png') }}" alt="Pemda Bone Bolango" class="h-8 w-auto object-contain" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8)) drop-shadow(0 0 1px rgba(255,255,255,0.35));">
+                <div class="h-5 w-px bg-slate-700"></div>
+                <img src="{{ asset('images/logo-kominfo-transparent.png') }}" alt="Diskominfo" class="h-7 w-auto object-contain" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8)) drop-shadow(0 0 1px rgba(255,255,255,0.45));">
+            </div>
+            <div class="overflow-hidden">
+                <span class="font-extrabold text-sm tracking-tight text-white block leading-tight truncate">SIMPATIK &bull; Sinosip</span>
+                <span class="text-[9px] text-blue-200/80 font-bold uppercase tracking-wider block mt-0.5 truncate">Diskominfo Bone Bolango</span>
             </div>
         </div>
 
@@ -132,21 +136,26 @@
     <!-- Main Content -->
     <main class="flex-1 flex flex-col h-full overflow-hidden relative">
         <header class="h-20 bg-header-gradient flex items-center justify-between px-8 z-10 shrink-0 no-print">
-            <h1 class="text-xl font-black text-navy tracking-tight">@yield('title', 'Dashboard')</h1>
-            <div class="flex items-center gap-6">
-                <!-- Logos Pemda Bone Bolango & Kominfo -->
-                <div class="flex items-center space-x-2">
-                    <img src="{{ asset('images/logo-pemda.png') }}" alt="Pemda Bone Bolango" class="h-8 w-auto">
-                    <img src="{{ asset('images/logo-kominfo.png') }}" alt="Kominfo Bone Bolango" class="h-8 w-auto">
+            <div class="flex items-center gap-3">
+                <h1 class="text-xl font-black text-navy tracking-tight">@yield('title', 'Dashboard')</h1>
+            </div>
+            <div class="flex items-center gap-5">
+                <!-- Date Pill -->
+                <div class="hidden lg:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 border border-blue-200/60 shadow-sm text-xs font-semibold text-slate-600">
+                    <i class="fa-regular fa-calendar-check text-primary"></i>
+                    <span>{{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}</span>
                 </div>
-                <div class="h-8 w-px bg-slate-200"></div>
-                <div class="flex items-center gap-4">
+                <div class="h-8 w-px bg-slate-200 hidden lg:block"></div>
+                <!-- User Profile -->
+                <div class="flex items-center gap-3">
                     <div class="text-right hidden sm:block">
-                        <p class="text-sm font-bold text-navy">{{ Auth::user()->name }}</p>
-                        <p class="text-xs text-slate-500">{{ Auth::user()->role->nama ?? 'Pengguna' }}</p>
+                        <p class="text-sm font-bold text-navy leading-tight">{{ Auth::user()->name ?? Auth::user()->nama ?? 'Pengguna' }}</p>
+                        <span class="inline-block text-[10px] font-bold text-primary bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/50 mt-0.5">
+                            {{ Auth::user()->role->nama ?? 'Pengguna' }}
+                        </span>
                     </div>
-                    <div class="w-10 h-10 rounded-full bg-slate-200 border-2 border-white shadow flex items-center justify-center overflow-hidden ring-2 ring-blue-100">
-                        <img src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&background=DBEAFE&color=1E40AF" alt="Avatar">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-extrabold text-sm shadow-md shadow-blue-500/20 flex items-center justify-center ring-2 ring-white overflow-hidden">
+                        {{ strtoupper(substr(Auth::user()->name ?? Auth::user()->nama ?? 'U', 0, 2)) }}
                     </div>
                 </div>
             </div>
