@@ -2,25 +2,32 @@
 
 @php
     // Persiapkan data image base64 untuk Logo Pemda Bone Bolango
-    $pemdaPath = public_path('images/logo-pemda.png');
+    $pemdaPath = file_exists(public_path('images/logo-pemda-transparent.png'))
+        ? public_path('images/logo-pemda-transparent.png')
+        : (file_exists(public_path('images/bonebolango.png'))
+            ? public_path('images/bonebolango.png')
+            : public_path('images/logo-pemda.png'));
     $pemdaExists = file_exists($pemdaPath);
     $pemdaSrc = null;
     if ($pemdaExists) {
+        $pemdaRel = str_replace([public_path() . DIRECTORY_SEPARATOR, public_path() . '/', '\\'], ['', '', '/'], $pemdaPath);
         $pemdaSrc = $isPdf 
             ? 'data:image/png;base64,' . base64_encode(file_get_contents($pemdaPath))
-            : asset('images/logo-pemda.png');
+            : asset($pemdaRel);
     }
 
     // Persiapkan data image base64 untuk Logo Kominfo Bone Bolango
-    $kominfoPng = public_path('images/logo-kominfo.png');
-    $kominfoJpg = public_path('images/logo-kominfo.jpg');
-    $kominfoPath = file_exists($kominfoPng) ? $kominfoPng : (file_exists($kominfoJpg) ? $kominfoJpg : null);
-    $kominfoExists = !is_null($kominfoPath) && file_exists($kominfoPath);
+    $kominfoPath = file_exists(public_path('images/logo-kominfo-transparent.png'))
+        ? public_path('images/logo-kominfo-transparent.png')
+        : (file_exists(public_path('images/logo-kominfo.png'))
+            ? public_path('images/logo-kominfo.png')
+            : public_path('images/logo-kominfo.jpg'));
+    $kominfoExists = file_exists($kominfoPath);
     $kominfoSrc = null;
     if ($kominfoExists) {
         $isJpg = str_ends_with(strtolower($kominfoPath), '.jpg') || str_ends_with(strtolower($kominfoPath), '.jpeg');
         $kominfoMime = $isJpg ? 'image/jpeg' : 'image/png';
-        $kominfoRel = $isJpg ? 'images/logo-kominfo.jpg' : 'images/logo-kominfo.png';
+        $kominfoRel = str_replace([public_path() . DIRECTORY_SEPARATOR, public_path() . '/', '\\'], ['', '', '/'], $kominfoPath);
         $kominfoSrc = $isPdf 
             ? 'data:' . $kominfoMime . ';base64,' . base64_encode(file_get_contents($kominfoPath))
             : asset($kominfoRel);
@@ -49,15 +56,12 @@
                     Jl. Prof. DR. Ing. H. BJ. Habibie, Kec. Suwawa, Kabupaten Bone Bolango – 96184
                 </p>
                 <p style="margin: 2px 0 0 0; font-size: 9.5px; color: #334155; font-weight: 500; line-height: 1.35; font-family: Arial, sans-serif;">
-                    E-mail: <a href="mailto:kominfo@bonebolangokab.go.id" style="color: #2563eb; text-decoration: none;">kominfo@bonebolangokab.go.id</a> | Website: <a href="http://www.bonebolangokab.go.id" target="_blank" style="color: #2563eb; text-decoration: none;">www.bonebolangokab.go.id</a>
+                    E-mail: <a href="mailto:kominfo@bonebolangokab.go.id" style="color: #2563eb; text-decoration: none;">kominfo@bonebolangokab.go.id</a> | Website: <a href="mailto:kominfo@bonebolangokab.go.id" style="color: #2563eb; text-decoration: none;">kominfo@bonebolangokab.go.id</a>
                 </p>
             </td>
 
-            <!-- Kolom Logo Kominfo Bone Bolango di Sisi Kanan -->
+            <!-- Kolom Penyeimbang Simetris di Sisi Kanan (Tanpa Logo Kominfo) -->
             <td style="width: 14%; text-align: center; vertical-align: middle; border: none; padding: 0 0 0 4px;">
-                @if($kominfoSrc)
-                    <img src="{{ $kominfoSrc }}" height="65" style="height: 65px; width: auto; max-height: 65px; vertical-align: middle; display: inline-block;" alt="Logo Kominfo Bone Bolango">
-                @endif
             </td>
         </tr>
     </table>

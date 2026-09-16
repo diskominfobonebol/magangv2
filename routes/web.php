@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\SuratController;
 use App\Http\Controllers\SuratMasukController;
 use App\Http\Controllers\SettingController;
@@ -15,27 +16,45 @@ use App\Models\KenpaBerkala;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 
-// Halaman Utama
+// Halaman Utama: Landing Page Terpadu (Sinosip & SIMPATIK)
 Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->route('dashboard');
     }
     return view('welcome');
-});
+})->name('landing');
+
+// Landing Page Khusus Program Magang Mahasiswa (Informasi & Persyaratan Berkas)
+Route::get('/magang', function () {
+    return view('landing.magang');
+})->name('landing.magang');
 
 // Alias Fallback
 Route::get('/home', fn() => redirect()->route('dashboard'));
 Route::get('/admin/dashboard', fn() => redirect()->route('dashboard'));
 
-// Rute Publik Detail Aset (Dapat diakses saat QR Code di-scan)
-Route::get('/aset/{id}', [AdminController::class, 'publicDetail'])->name('aset.public_detail')->where('id', '.*');
+// Rute Publik Detail Aset & QR Code (Dapat diakses saat QR Code di-scan)
+Route::get('/aset/{id}/qr-image', [AdminController::class, 'qrImage'])->name('aset.qr_image')->where('id', '.*');
+Route::get('/aset/{id}', [AdminController::class, 'publicDetail'])->name('aset.public_detail')->where('id', '^(?!export-pdf$).*');
+Route::get('/api/aset/{id}', [AdminController::class, 'apiDetail'])->name('api.aset.detail')->where('id', '.*');
 
 // Rute Tamu (Belum Login)
 Route::middleware('guest')->group(function () {
+    // Alur Login Terpisah: Pegawai/Admin vs Mahasiswa
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/login/pegawai', [AuthController::class, 'showLoginPegawai'])->name('login.pegawai');
+    Route::get('/login/mahasiswa', [AuthController::class, 'showLoginMahasiswa'])->name('login.mahasiswa');
+    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+
+    // Registrasi Akun Khusus Mahasiswa Magang
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register']);
+
+    // Fitur Reset Password Mandiri Khusus Mahasiswa (Self-Service)
+    Route::get('/forgot-password', [PasswordResetController::class, 'showForgotPasswordForm'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail'])->name('password.email');
+    Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/reset-password', [PasswordResetController::class, 'reset'])->name('password.update');
 });
 
 // Rute Pengguna Terautentikasi (Sudah Login)
@@ -43,24 +62,32 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // Rute Khusus Admin Master (Role 1) - Pengaturan & Manajemen User
-    Route::middleware('role:1')->group(function () {
+    Route::middleware('role:1,admin')->group(function () {
         Route::get('/admin/settings', [SettingController::class, 'index'])->name('admin.settings.index');
         Route::post('/admin/settings', [SettingController::class, 'update'])->name('admin.settings.update');
 
-        Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');
+        Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users');
+        Route::get('/admin/users/index', [UserController::class, 'index'])->name('admin.users.index');
+        Route::get('/admin/user', [UserController::class, 'index'])->name('admin.user');
         Route::post('/admin/users', [UserController::class, 'store'])->name('admin.users.store');
+        Route::post('/admin/user', [UserController::class, 'store'])->name('admin.user.store');
+        Route::put('/admin/users/{id}', [UserController::class, 'update'])->name('admin.users.update');
+        Route::put('/admin/user/{id}', [UserController::class, 'update'])->name('admin.user.update');
+        Route::post('/admin/users/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('admin.users.toggle_status');
+        Route::post('/admin/users/{id}/toggle-status-alt', [UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
+        Route::post('/admin/user/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('admin.user.toggle_status');
         Route::post('/admin/users/{id}/reset-password', [UserController::class, 'resetPassword'])->name('admin.users.reset-password');
+        Route::post('/admin/user/{id}/reset-password', [UserController::class, 'resetPassword'])->name('admin.user.reset_password');
         Route::delete('/admin/users/{id}', [UserController::class, 'destroy'])->name('admin.users.destroy');
-
-        // Alias kompatibilitas dari sistem-aset-magang
-        Route::get('/admin/users-alias', [UserController::class, 'index'])->name('admin.user');
-        Route::post('/admin/users-alias', [UserController::class, 'store'])->name('admin.user.store');
-        Route::delete('/admin/users-alias/{id}', [UserController::class, 'destroy'])->name('admin.user.destroy');
+        Route::delete('/admin/user/{id}', [UserController::class, 'destroy'])->name('admin.user.destroy');
     });
 
     // Rute Surat Menyurat & Kenaikan Pangkat (Role 1 dan 2)
     Route::middleware('role:1,2')->group(function () {
         Route::get('/dashboard/master', function () {
+            if (in_array(Auth::user()->role_id, [1, 2])) {
+                return redirect()->route('surat.index');
+            }
             $totalPegawai = \App\Models\Pegawai::count();
             $totalSurat = \App\Models\Surat::count();
             $totalSuratMasuk = \App\Models\SuratMasuk::count();
@@ -115,29 +142,31 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Modul Manajemen Aset (Dikelola oleh Bendahara Barang (4) & Admin Master (1))
-    Route::middleware('role:bendahara_barang,admin')->group(function () {
+    Route::middleware('role:bendahara_barang,admin,4,1')->group(function () {
         Route::get('/admin/aset', [AdminController::class, 'aset'])->name('admin.aset');
-        Route::get('/admin/aset/export-pdf', [AdminController::class, 'exportLaporanPdf'])->name('admin.aset.laporan.pdf');
+        Route::get('/admin/aset/laporan/pdf', [AdminController::class, 'exportLaporanPdf'])->name('admin.aset.laporan.pdf');
+        Route::get('/admin/aset/export-pdf', [AdminController::class, 'exportLaporanPdf'])->name('admin.aset.export-pdf');
+        Route::get('/aset/export-pdf', [AdminController::class, 'exportLaporanPdf'])->name('aset.export');
         Route::post('/admin/aset', [AdminController::class, 'storeAset'])->name('admin.aset.store');
         Route::put('/admin/aset/{no_reg_pemda}', [AdminController::class, 'updateAset'])->name('admin.aset.update')->where('no_reg_pemda', '.*');
         Route::delete('/admin/aset/{no_reg_pemda}', [AdminController::class, 'destroyAset'])->name('admin.aset.destroy')->where('no_reg_pemda', '.*');
     });
 
     // Modul Kelola Magang (Dikelola oleh Admin Master (1))
-    Route::middleware('role:admin')->group(function () {
+    Route::middleware('role:admin,1')->group(function () {
         Route::get('/admin/magang', [AdminController::class, 'magang'])->name('admin.magang');
         Route::post('/admin/magang/{id}/status', [AdminController::class, 'updateStatusMagang'])->name('admin.magang.update');
     });
 
     // Modul Portal Mahasiswa (Role 5 & Admin)
-    Route::middleware('role:mahasiswa,admin')->group(function () {
+    Route::middleware('role:mahasiswa,admin,5,1')->group(function () {
         Route::get('/mahasiswa/dashboard', [MahasiswaController::class, 'index'])->name('mahasiswa.dashboard');
         Route::post('/mahasiswa/magang', [MahasiswaController::class, 'storeMagang'])->name('mahasiswa.magang.store');
         Route::get('/mahasiswa/surat-balasan/{id}/download', [MahasiswaController::class, 'downloadSuratBalasan'])->name('mahasiswa.surat-balasan.download');
     });
 
     // Rute untuk Pegawai (Role 3)
-    Route::middleware('role:3')->group(function () {
+    Route::middleware('role:3,pegawai')->group(function () {
         Route::get('/dashboard/pegawai', [\App\Http\Controllers\PegawaiDashboardController::class, 'index'])->name('dashboard.pegawai');
         Route::post('/dashboard/pegawai/upload', [\App\Http\Controllers\PegawaiDashboardController::class, 'uploadDokumen'])->name('dashboard.pegawai.upload');
         Route::delete('/dashboard/pegawai/dokumen/{id}', [\App\Http\Controllers\PegawaiDashboardController::class, 'destroyDokumen'])->name('dashboard.pegawai.dokumen.destroy');
@@ -146,8 +175,7 @@ Route::middleware(['auth'])->group(function () {
     // Fallback rute dashboard sesuai role
     Route::get('/dashboard', function () {
         $role = (int) Auth::user()->role_id;
-        if ($role === 1) return redirect()->route('dashboard.master');
-        if ($role === 2) return redirect('/surat');
+        if ($role === 1 || $role === 2) return redirect()->route('surat.index'); // Admin Master & Admin Kasubag langsung ke Surat Menyurat
         if ($role === 4) return redirect()->route('admin.aset');
         if ($role === 5) return redirect()->route('mahasiswa.dashboard');
         return redirect()->route('dashboard.pegawai');

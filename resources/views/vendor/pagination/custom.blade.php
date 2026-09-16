@@ -23,11 +23,11 @@
         <div class="inline-flex items-center gap-1.5">
             {{-- Tombol Previous (Panah Kiri) --}}
             @if ($paginator->onFirstPage())
-                <span aria-disabled="true" class="inline-flex items-center justify-center w-9 h-9 rounded-full text-xs font-bold bg-white/60 text-slate-300 border border-slate-200/60 cursor-not-allowed select-none shadow-xs">
+                <span aria-disabled="true" class="inline-flex items-center justify-center w-9 h-9 rounded-full text-xs font-bold bg-white/60 text-slate-300 border border-slate-200/60 cursor-not-allowed select-none shadow-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
                 </span>
             @else
-                <a href="{{ $paginator->previousPageUrl() }}" rel="prev" class="inline-flex items-center justify-center w-9 h-9 rounded-full text-xs font-bold bg-white text-navy hover:text-primary hover:bg-blue-50 border border-blue-200/80 shadow-xs transition-all cursor-pointer">
+                <a href="{{ $paginator->previousPageUrl() }}" rel="prev" class="inline-flex items-center justify-center w-9 h-9 rounded-full text-xs font-bold bg-white text-navy hover:text-primary hover:bg-blue-50 border border-blue-200/80 shadow-sm transition-all cursor-pointer">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
                 </a>
             @endif
@@ -49,7 +49,7 @@
                                 {{ $page }}
                             </span>
                         @else
-                            <a href="{{ $url }}" class="inline-flex items-center justify-center min-w-[36px] h-9 px-3 rounded-full text-xs font-bold bg-white text-navy hover:text-primary hover:bg-blue-50 border border-blue-200/80 shadow-xs transition-all cursor-pointer">
+                            <a href="{{ $url }}" class="inline-flex items-center justify-center min-w-[36px] h-9 px-3 rounded-full text-xs font-bold bg-white text-navy hover:text-primary hover:bg-blue-50 border border-blue-200/80 shadow-sm transition-all cursor-pointer">
                                 {{ $page }}
                             </a>
                         @endif
@@ -59,11 +59,11 @@
 
             {{-- Tombol Next (Panah Kanan) --}}
             @if ($paginator->hasMorePages())
-                <a href="{{ $paginator->nextPageUrl() }}" rel="next" class="inline-flex items-center justify-center w-9 h-9 rounded-full text-xs font-bold bg-white text-navy hover:text-primary hover:bg-blue-50 border border-blue-200/80 shadow-xs transition-all cursor-pointer">
+                <a href="{{ $paginator->nextPageUrl() }}" rel="next" class="inline-flex items-center justify-center w-9 h-9 rounded-full text-xs font-bold bg-white text-navy hover:text-primary hover:bg-blue-50 border border-blue-200/80 shadow-sm transition-all cursor-pointer">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
                 </a>
             @else
-                <span aria-disabled="true" class="inline-flex items-center justify-center w-9 h-9 rounded-full text-xs font-bold bg-white/60 text-slate-300 border border-slate-200/60 cursor-not-allowed select-none shadow-xs">
+                <span aria-disabled="true" class="inline-flex items-center justify-center w-9 h-9 rounded-full text-xs font-bold bg-white/60 text-slate-300 border border-slate-200/60 cursor-not-allowed select-none shadow-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
                 </span>
             @endif

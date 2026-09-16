@@ -10,16 +10,14 @@ class AsetPeralatanMesin extends Model
     use HasFactory;
 
     protected $table = 'aset_peralatan_mesin';
-    protected $primaryKey = 'no_reg_pemda';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    protected $primaryKey = 'id';
 
     protected static function boot()
     {
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->no_reg_pemda)) {
+            if (empty($model->no_reg_pemda) && empty($model->no_reg_kominfo)) {
                 $year = date('Y');
                 $prefix = "REG-{$year}-";
 
@@ -40,6 +38,7 @@ class AsetPeralatanMesin extends Model
 
     protected $fillable = [
         'no_reg_pemda',
+        'no_reg_kominfo',
         'penanggung_jawab',
         'jenis_barang',
         'merek_tipe',
@@ -62,24 +61,56 @@ class AsetPeralatanMesin extends Model
     ];
 
     /**
-     * URL publik untuk QR Code aset (mendukung jaringan lokal IP komputer)
+     * Dapatkan URL publik yang dapat diakses dari jaringan LAN (HP/Tablet) untuk scan QR Code
      */
-    public function getQrUrlAttribute()
+    public function getPublicUrlAttribute(): string
     {
-        $baseUrl = config('app.url');
+        $identifier = $this->no_reg_pemda ?: ($this->no_reg_kominfo ?: $this->id);
+        return static::generatePublicUrl((string)$identifier);
+    }
 
-        // Jika config('app.url') kosong atau bernilai localhost/127.0.0.1, gunakan IP jaringan lokal komputer
-        if (empty($baseUrl) || str_contains($baseUrl, 'localhost') || str_contains($baseUrl, '127.0.0.1')) {
-            $localIp = gethostbyname(gethostname());
-            if ($localIp && $localIp !== '127.0.0.1') {
-                $port = 8000;
-                if (request() && request()->getPort()) {
-                    $port = request()->getPort();
-                }
-                $baseUrl = 'http://' . $localIp . ($port != 80 ? ':' . $port : '');
-            }
+    /**
+     * Alias kompatibilitas
+     */
+    public function getQrUrlAttribute(): string
+    {
+        return $this->public_url;
+    }
+
+    /**
+     * Helper pembentuk URL publik aset yang ramah jaringan lokal (LAN/WiFi)
+     */
+    public static function generatePublicUrl(?string $noReg): string
+    {
+        if (empty($noReg)) {
+            return url('/aset');
         }
 
-        return rtrim($baseUrl, '/') . '/aset/' . urlencode($this->no_reg_pemda);
+        $encodedId = urlencode($noReg);
+        $request = request();
+        $host = $request ? $request->getHost() : null;
+
+        // 1. Jika request browser berasal dari IP jaringan eksternal / domain nyata (bukan localhost / loopback)
+        if ($host && $host !== '127.0.0.1' && $host !== 'localhost' && $host !== '::1') {
+            return url('/aset/' . $encodedId);
+        }
+
+        // 2. Jika konfigurasi APP_URL di .env menggunakan IP LAN atau Domain (bukan localhost / 127.0.0.1)
+        $appUrl = rtrim(config('app.url') ?? '', '/');
+        if (!empty($appUrl) && !str_contains($appUrl, '127.0.0.1') && !str_contains($appUrl, 'localhost')) {
+            return $appUrl . '/aset/' . $encodedId;
+        }
+
+        // 3. Fallback: Otomatis mendeteksi IP lokal mesin (WiFi/LAN) agar dapat dibuka perangkat HP
+        $lanIp = @gethostbyname(gethostname());
+        if ($lanIp && $lanIp !== '127.0.0.1' && !str_starts_with($lanIp, '169.254.')) {
+            $port = $request ? $request->getPort() : 8000;
+            $portStr = ($port && $port != 80 && $port != 443) ? ":{$port}" : '';
+            $scheme = ($request && $request->getScheme()) ? $request->getScheme() : 'http';
+            $basePath = $request ? $request->getBasePath() : '';
+            return "{$scheme}://{$lanIp}{$portStr}{$basePath}/aset/{$encodedId}";
+        }
+
+        return url('/aset/' . $encodedId);
     }
 }

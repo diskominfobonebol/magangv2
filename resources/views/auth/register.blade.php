@@ -35,8 +35,9 @@
         <!-- Logo & Header -->
         <div class="text-center mb-8">
             <div class="flex items-center justify-center gap-3 mb-3">
-                <img src="{{ asset('images/logo-pemda.png') }}" alt="Logo Pemda Bone Bolango" class="h-12 w-auto object-contain drop-shadow">
-                <img src="{{ asset('images/logo-kominfo.png') }}" alt="Logo Diskominfo Bone Bolango" class="h-12 w-auto object-contain drop-shadow">
+                <img src="{{ asset('images/logo-pemda-transparent.png') }}" alt="Logo Pemda Bone Bolango" class="h-12 w-auto object-contain drop-shadow-sm">
+                <div class="h-8 w-px bg-slate-300"></div>
+                <img src="{{ asset('images/logo-kominfo-transparent.png') }}" alt="Logo Diskominfo Bone Bolango" class="h-11 w-auto object-contain drop-shadow-sm">
             </div>
             <h1 class="text-2xl sm:text-3xl font-black text-[#172554] tracking-tight">Pendaftaran Akun Mahasiswa Magang</h1>
             <p class="text-xs sm:text-sm text-slate-500 mt-1 font-medium">Lengkapi formulir pendaftaran untuk mengajukan magang di Diskominfo Bone Bolango</p>
@@ -149,7 +150,13 @@
 
         <p class="mt-6 text-center text-xs text-slate-600 font-medium">
             Sudah memiliki akun? 
-            <a href="{{ route('login') }}" class="text-[#3B82F6] hover:underline font-extrabold">Masuk di sini</a>
+            <a href="{{ route('login.mahasiswa') }}" class="text-[#3B82F6] hover:underline font-extrabold">Masuk di sini</a>
+        </p>
+        <p class="mt-3 text-center text-xs text-slate-400">
+            <a href="{{ route('landing') }}" class="hover:text-[#172554] transition inline-flex items-center gap-1 font-semibold">
+                <i class="fa-solid fa-arrow-left text-[10px]"></i>
+                <span>Kembali ke Halaman Utama</span>
+            </a>
         </p>
     </div>
 

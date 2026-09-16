@@ -74,8 +74,8 @@
         }
 
         /* Styling khusus untuk cetak label QR Code */
-        @media print {
-            @page {
+        @@media print {
+            @@page {
                 size: 80mm 90mm;
                 margin: 0mm !important;
             }
@@ -129,7 +129,7 @@
 @endpush
 
 @section('content')
-<div class="space-y-6" x-data="{ activeTab: '{{ request()->has('filter_bulan') || request()->has('filter_tahun') || request()->has('filter_kondisi') || request()->has('kondisi') || (request()->has('tab') && request()->get('tab') === 'laporan') ? 'laporan' : 'master' }}', showAddModal: false, showEditModal: false, showQrModal: false, editItem: {}, qrItem: {} }">
+<div class="space-y-6" x-data="{ activeTab: '{{ request()->get('tab') === 'laporan' || request()->has('filter_bulan') || request()->has('filter_tahun') || request()->has('filter_kondisi') ? 'laporan' : 'master' }}', showAddModal: false, showEditModal: false, showQrModal: false, editItem: {}, qrItem: {} }">
 
                 @if(session('success'))
                     <div class="p-4 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-2xl text-sm flex items-center space-x-2 shadow-sm">
@@ -189,6 +189,61 @@
                         </button>
                     </div>
 
+                    <!-- Toolbar Filter & Pencarian Master Data Aset -->
+                    <form action="{{ route('admin.aset') }}" method="GET" class="bg-white/90 p-3 rounded-2xl border border-blue-100/90 shadow-sm flex flex-wrap items-center gap-2">
+                        <!-- Input Kata Kunci Pencarian -->
+                        <div class="relative flex-1 min-w-[200px]">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari No. Reg, Jenis, Merek, Penanggung Jawab, Lokasi..." class="w-full text-xs pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-full focus:ring-2 focus:ring-[#3B82F6] focus:bg-white text-slate-700 font-medium">
+                        </div>
+
+                        <!-- Filter Kategori / Jenis Barang -->
+                        <select name="kategori" class="text-xs border border-slate-200 rounded-full px-3 py-2 bg-slate-50 focus:ring-2 focus:ring-[#3B82F6] font-medium text-slate-700 max-w-[160px]">
+                            <option value="">Semua Kategori</option>
+                            @foreach($listKategori as $kat)
+                                <option value="{{ $kat }}" {{ request('kategori') == $kat ? 'selected' : '' }}>{{ $kat }}</option>
+                            @endforeach
+                        </select>
+
+                        <!-- Filter Kondisi -->
+                        <select name="kondisi" class="text-xs border border-slate-200 rounded-full px-3 py-2 bg-slate-50 focus:ring-2 focus:ring-[#3B82F6] font-medium text-slate-700">
+                            <option value="">Semua Kondisi</option>
+                            <option value="Baik" {{ request('kondisi') == 'Baik' ? 'selected' : '' }}>Baik</option>
+                            <option value="Rusak Ringan" {{ request('kondisi') == 'Rusak Ringan' ? 'selected' : '' }}>Rusak Ringan</option>
+                            <option value="Rusak Berat" {{ request('kondisi') == 'Rusak Berat' ? 'selected' : '' }}>Rusak Berat</option>
+                            <option value="Hilang" {{ request('kondisi') == 'Hilang' ? 'selected' : '' }}>Hilang</option>
+                        </select>
+
+                        <!-- Filter Lokasi -->
+                        <select name="lokasi" class="text-xs border border-slate-200 rounded-full px-3 py-2 bg-slate-50 focus:ring-2 focus:ring-[#3B82F6] font-medium text-slate-700 max-w-[160px]">
+                            <option value="">Semua Lokasi</option>
+                            @foreach($listLokasi as $lok)
+                                <option value="{{ $lok }}" {{ request('lokasi') == $lok ? 'selected' : '' }}>{{ $lok }}</option>
+                            @endforeach
+                        </select>
+
+                        <!-- Filter Tahun -->
+                        <select name="tahun" class="text-xs border border-slate-200 rounded-full px-3 py-2 bg-slate-50 focus:ring-2 focus:ring-[#3B82F6] font-medium text-slate-700">
+                            <option value="">Semua Tahun</option>
+                            @foreach($listTahun as $th)
+                                <option value="{{ $th }}" {{ request('tahun') == $th ? 'selected' : '' }}>{{ $th }}</option>
+                            @endforeach
+                        </select>
+
+                        <!-- Tombol Terapkan Filter & Reset -->
+                        <button type="submit" class="bg-[#3B82F6] hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-full font-bold flex items-center space-x-1.5 shadow-sm transition">
+                            <i class="fa-solid fa-filter"></i>
+                            <span>Filter</span>
+                        </button>
+
+                        @if(request()->hasAny(['search', 'kategori', 'kondisi', 'lokasi', 'tahun']))
+                            <a href="{{ route('admin.aset') }}" class="text-xs text-rose-600 hover:text-rose-800 font-bold px-3 py-2 rounded-full hover:bg-rose-50 transition flex items-center space-x-1" title="Reset filter">
+                                <i class="fa-solid fa-rotate-left"></i>
+                                <span>Reset</span>
+                            </a>
+                        @endif
+                    </form>
+
                     <!-- Tabel Master Data Aset Wrapper dengan Gradasi & Soft Shadow -->
                     <div class="overflow-x-auto rounded-2xl border border-blue-200/60 shadow-sm bg-white/80 backdrop-blur-md">
                         <table class="w-full text-left text-[11px] text-slate-600 whitespace-nowrap">
@@ -198,6 +253,7 @@
                                     <th class="px-3 py-3.5">Penanggung Jawab</th>
                                     <th class="px-3 py-3.5">Jenis Barang</th>
                                     <th class="px-3 py-3.5">No Reg/ID Pemda</th>
+                                    <th class="px-3 py-3.5">No Reg KOMINFO</th>
                                     <th class="px-3 py-3.5">Merek/Tipe</th>
                                     <th class="px-3 py-3.5">Tahun</th>
                                     <th class="px-3 py-3.5">Harga Perolehan (Rp)</th>
@@ -220,13 +276,16 @@
                                         'Rusak Berat', 'Hilang' => 'bg-rose-100 text-rose-800',
                                         default => 'bg-slate-100 text-slate-700'
                                     };
-                                    $regId = $item->no_reg_pemda ?? 'REG-' . ($aset->firstItem() + $index);
+                                    $regId = $item->no_reg_pemda ?: '-';
+                                    $regKominfo = $item->no_reg_kominfo ?: '-';
+                                    $itemId = $item->id;
                                 @endphp
                                 <tr class="hover:bg-blue-50/50 transition">
                                     <td class="px-3 py-3 text-center font-medium">{{ $aset->firstItem() + $index }}</td>
                                     <td class="px-3 py-3 font-bold text-[#172554]">{{ $item->penanggung_jawab ?? '-' }}</td>
                                     <td class="px-3 py-3 font-semibold text-slate-800">{{ $item->jenis_barang ?? '-' }}</td>
                                     <td class="px-3 py-3 font-mono text-[#3B82F6] font-bold">{{ $regId }}</td>
+                                    <td class="px-3 py-3 font-mono text-emerald-600 font-bold">{{ $regKominfo }}</td>
                                     <td class="px-3 py-3">{{ $item->merek_tipe ?? '-' }}</td>
                                     <td class="px-3 py-3">{{ $item->tahun ?? '-' }}</td>
                                     <td class="px-3 py-3 font-mono font-semibold">Rp {{ number_format($item->harga_perolehan ?? 0, 0, ',', '.') }}</td>
@@ -236,7 +295,7 @@
                                     <td class="px-3 py-3 font-mono text-slate-600">{{ $item->no_bpkb ?: '-' }}</td>
                                     <td class="px-3 py-3">
                                         <span class="px-2.5 py-0.5 rounded-full font-bold {{ $badgeColor }}">
-                                            {{ $item->kondisi ?? 'Baik' }}
+                                             {{ $item->kondisi ?? 'Baik' }}
                                         </span>
                                     </td>
                                     <td class="px-3 py-3">{{ $item->keterangan_lokasi_unit ?? '-' }}</td>
@@ -244,7 +303,7 @@
                                     <td class="px-3 py-3 text-center">
                                         <div class="flex items-center justify-center space-x-1.5">
                                             <!-- QR Modal Trigger -->
-                                            <button @click="showQrModal = true; qrItem = { id: '{{ addslashes($regId) }}', jenis: '{{ addslashes($item->jenis_barang ?? '-') }}', penanggung: '{{ addslashes($item->penanggung_jawab ?? '-') }}', merek: '{{ addslashes($item->merek_tipe ?? '-') }}', url: '{{ $item->qr_url ?? url('/aset/' . urlencode($regId)) }}' }" class="bg-pink-100 hover:bg-[#EC4899] text-[#EC4899] hover:text-white font-extrabold px-3 py-1 rounded-full transition flex items-center space-x-1 text-[10px] shadow-sm" title="Cetak Label QR Code">
+                                            <button @click="showQrModal = true; qrItem = { id: '{{ addslashes($regId) }}', kominfo: '{{ addslashes($regKominfo) }}', jenis: '{{ addslashes($item->jenis_barang ?? '-') }}', penanggung: '{{ addslashes($item->penanggung_jawab ?? '-') }}', merek: '{{ addslashes($item->merek_tipe ?? '-') }}', url: '{{ $item->public_url }}', qr_img: '{{ url('/aset/' . $itemId . '/qr-image') }}' }" class="bg-pink-100 hover:bg-[#EC4899] text-[#EC4899] hover:text-white font-extrabold px-3 py-1 rounded-full transition flex items-center space-x-1 text-[10px] shadow-sm" title="Cetak Label QR Code">
                                                 <i class="fa-solid fa-qrcode"></i>
                                                 <span>QR</span>
                                             </button>
@@ -253,7 +312,7 @@
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </button>
                                             <!-- Delete Form Trigger -->
-                                            <form action="{{ route('admin.aset.destroy', ['no_reg_pemda' => $regId]) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus aset ini?')">
+                                            <form action="{{ route('admin.aset.destroy', ['no_reg_pemda' => $itemId]) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus aset ini?')">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="text-rose-600 hover:text-rose-800 font-bold px-2 py-1 rounded-full hover:bg-rose-50 transition" title="Hapus Data Aset">
@@ -265,7 +324,7 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="15" class="px-4 py-8 text-center text-slate-400">Belum ada data aset terdaftar.</td>
+                                    <td colspan="16" class="px-4 py-8 text-center text-slate-400">Belum ada data aset terdaftar.</td>
                                 </tr>
                                 @endforelse
                             </tbody>
@@ -333,7 +392,7 @@
                         </form>
                     </div>
 
-                    <!-- Interactive Visual Summary Cards (Selaras Pola Surat Menyurat) -->
+                    <!-- Interactive Visual Summary Cards (Selaras Pola Surat Menyurat & Rekap Bulanan) -->
                     @php
                         $currKondisi = $filterKondisi ?? 'all';
                         $isTotalActive = ($currKondisi === 'all' || empty($currKondisi));
@@ -342,151 +401,142 @@
                         $isBeratActive = ($currKondisi === 'Rusak Berat');
                         $isHilangActive = ($currKondisi === 'Hilang');
 
-                        $commonParams = ['filter_bulan' => $filterBulan, 'filter_tahun' => $filterTahun];
+                        $commonParams = [
+                            'tab' => 'laporan',
+                            'filter_bulan' => $filterBulan, 
+                            'filter_tahun' => $filterTahun
+                        ];
 
-                        $urlTotal = route('admin.aset', array_merge(request()->except(['filter_kondisi', 'kondisi', 'page']), $commonParams));
-                        $urlBaik = $isBaikActive 
-                            ? route('admin.aset', array_merge(request()->except(['filter_kondisi', 'kondisi', 'page']), $commonParams))
-                            : route('admin.aset', array_merge(request()->except('page'), array_merge($commonParams, ['filter_kondisi' => 'Baik'])));
-                        $urlRingan = $isRinganActive 
-                            ? route('admin.aset', array_merge(request()->except(['filter_kondisi', 'kondisi', 'page']), $commonParams))
-                            : route('admin.aset', array_merge(request()->except('page'), array_merge($commonParams, ['filter_kondisi' => 'Rusak Ringan'])));
-                        $urlBerat = $isBeratActive 
-                            ? route('admin.aset', array_merge(request()->except(['filter_kondisi', 'kondisi', 'page']), $commonParams))
-                            : route('admin.aset', array_merge(request()->except('page'), array_merge($commonParams, ['filter_kondisi' => 'Rusak Berat'])));
-                        $urlHilang = $isHilangActive 
-                            ? route('admin.aset', array_merge(request()->except(['filter_kondisi', 'kondisi', 'page']), $commonParams))
-                            : route('admin.aset', array_merge(request()->except('page'), array_merge($commonParams, ['filter_kondisi' => 'Hilang'])));
+                        $urlTotal = route('admin.aset', array_merge($commonParams, ['filter_kondisi' => 'all']));
+                        $urlBaik = route('admin.aset', array_merge($commonParams, ['filter_kondisi' => $isBaikActive ? 'all' : 'Baik']));
+                        $urlRingan = route('admin.aset', array_merge($commonParams, ['filter_kondisi' => $isRinganActive ? 'all' : 'Rusak Ringan']));
+                        $urlBerat = route('admin.aset', array_merge($commonParams, ['filter_kondisi' => $isBeratActive ? 'all' : 'Rusak Berat']));
+                        $urlHilang = route('admin.aset', array_merge($commonParams, ['filter_kondisi' => $isHilangActive ? 'all' : 'Hilang']));
                     @endphp
 
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                        <!-- Card 1: Total Aset / Semua Aset -->
+                        <!-- Card 1: Semua Aset -->
                         <a href="{{ $urlTotal }}" 
-                           class="p-5 rounded-3xl border shadow-sm card-interactive group relative flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl cursor-pointer block {{ $isTotalActive ? 'border-[#3B82F6] ring-2 ring-blue-500/40 bg-blue-100/70 shadow-blue-500/15' : 'bg-blue-50/60 border-blue-200/80 hover:border-blue-400' }}"
-                           title="{{ $isTotalActive ? 'Sedang menampilkan seluruh data aset tanpa filter kondisi' : 'Klik untuk menampilkan seluruh data aset tanpa filter kondisi' }}">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-1.5 flex-wrap">
-                                    <span class="text-xs font-extrabold uppercase tracking-wider transition-colors {{ $isTotalActive ? 'text-[#172554]' : 'text-slate-600 group-hover:text-[#3B82F6]' }}">Semua Aset</span>
-                                    @if($isTotalActive)
-                                        <span class="bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded-full font-bold">Semua</span>
-                                    @endif
+                           class="p-5 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer flex flex-col justify-between group relative {{ $isTotalActive ? 'border-2 border-[#EC4899] bg-pink-50/20 shadow-md shadow-pink-500/10' : 'border border-slate-200/90 bg-slate-50/70 hover:bg-white hover:border-slate-300 shadow-sm' }}"
+                           title="Semua Aset (Klik untuk menampilkan seluruh data aset)">
+                            <div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-extrabold uppercase tracking-wider text-slate-600">Semua Aset</span>
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center bg-slate-200/80 text-slate-700">
+                                        <i class="fa-solid fa-boxes-stacked text-xs"></i>
+                                    </div>
                                 </div>
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 {{ $isTotalActive ? 'bg-[#3B82F6] text-white shadow-sm scale-105' : 'bg-blue-100 text-[#3B82F6] group-hover:bg-[#3B82F6] group-hover:text-white' }}">
-                                    <i class="fa-solid fa-boxes-stacked text-xs"></i>
+                                <div class="mt-2.5">
+                                    <p class="text-3xl font-black text-[#172554]">{{ $rekapKondisi['Total'] ?? 0 }}</p>
                                 </div>
                             </div>
-                            <div class="mt-2">
-                                <p class="text-3xl font-black text-[#172554]">{{ $rekapKondisi['Total'] }}</p>
-                            </div>
-                            <div class="mt-3 pt-2.5 border-t border-blue-200/70 flex items-center justify-between text-[11px]">
+                            <div class="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
                                 <span class="text-slate-500 font-medium">Total Periode Ini</span>
-                                <span class="font-bold {{ $isTotalActive ? 'text-[#3B82F6]' : 'text-slate-400 group-hover:text-[#3B82F6]' }} transition-colors">
-                                    {{ $isTotalActive ? '✓ Aktif' : 'Tampilkan Semua →' }}
-                                </span>
+                                @if($isTotalActive)
+                                    <span class="bg-[#EC4899] text-white text-[10px] font-black px-2 py-0.5 rounded-md tracking-wider uppercase shadow-xs">AKTIF</span>
+                                @else
+                                    <span class="text-slate-400 group-hover:text-slate-600 font-semibold transition">Pilih &rarr;</span>
+                                @endif
                             </div>
                         </a>
 
-                        <!-- Card 2: Kondisi Baik -->
+                        <!-- Card 2: Kondisi Baik (Indigo Harmonis - Non-Hijau) -->
                         <a href="{{ $urlBaik }}" 
-                           class="p-5 rounded-3xl border shadow-sm card-interactive group relative flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl cursor-pointer block {{ $isBaikActive ? 'border-[#3B82F6] ring-2 ring-blue-500/50 bg-blue-100/70 shadow-blue-500/20' : 'bg-blue-50/60 border-blue-200/80 hover:border-blue-400' }}"
-                           title="{{ $isBaikActive ? 'Klik untuk membatalkan filter kondisi Baik' : 'Klik untuk menyaring aset dengan kondisi Baik' }}">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-1.5 flex-wrap">
-                                    <span class="text-xs font-extrabold uppercase tracking-wider transition-colors {{ $isBaikActive ? 'text-[#172554]' : 'text-slate-600 group-hover:text-[#3B82F6]' }}">Baik</span>
-                                    @if($isBaikActive)
-                                        <span class="bg-[#3B82F6] text-white text-[9px] px-2 py-0.5 rounded-full font-bold">Filter Aktif</span>
-                                    @endif
+                           class="p-5 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer flex flex-col justify-between group relative {{ $isBaikActive ? 'border-2 border-[#EC4899] bg-pink-50/20 shadow-md shadow-pink-500/10' : 'border border-indigo-200/80 bg-indigo-50/50 hover:bg-indigo-50/80 hover:border-indigo-300 shadow-sm' }}"
+                           title="Kondisi Baik (Klik untuk menyaring aset kondisi Baik)">
+                            <div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-extrabold uppercase tracking-wider text-indigo-800">Baik</span>
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center bg-indigo-100 text-indigo-600 shadow-xs">
+                                        <i class="fa-solid fa-circle-check text-xs"></i>
+                                    </div>
                                 </div>
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 {{ $isBaikActive ? 'bg-[#3B82F6] text-white shadow-sm scale-105' : 'bg-blue-100 text-[#3B82F6] group-hover:bg-[#3B82F6] group-hover:text-white' }}">
-                                    <i class="fa-solid fa-circle-check text-xs"></i>
+                                <div class="mt-2.5">
+                                    <p class="text-3xl font-black text-indigo-600">{{ $rekapKondisi['Baik'] ?? 0 }}</p>
                                 </div>
                             </div>
-                            <div class="mt-2">
-                                <p class="text-3xl font-black text-[#3B82F6]">{{ $rekapKondisi['Baik'] }}</p>
-                            </div>
-                            <div class="mt-3 pt-2.5 border-t border-blue-200/70 flex items-center justify-between text-[11px]">
-                                <span class="text-slate-500 font-medium">Kondisi Normal</span>
-                                <span class="font-bold {{ $isBaikActive ? 'text-[#3B82F6]' : 'text-slate-400 group-hover:text-[#3B82F6]' }} transition-colors">
-                                    {{ $isBaikActive ? '✕ Batalkan' : 'Filter Baik →' }}
-                                </span>
+                            <div class="mt-3 pt-2.5 border-t border-indigo-200/60 flex items-center justify-between text-[11px]">
+                                <span class="text-indigo-700/80 font-medium">Kondisi Normal</span>
+                                @if($isBaikActive)
+                                    <span class="bg-[#EC4899] text-white text-[10px] font-black px-2 py-0.5 rounded-md tracking-wider uppercase shadow-xs">AKTIF</span>
+                                @else
+                                    <span class="text-indigo-600 group-hover:text-indigo-800 font-semibold transition">Pilih &rarr;</span>
+                                @endif
                             </div>
                         </a>
 
-                        <!-- Card 3: Kondisi Rusak Ringan -->
+                        <!-- Card 3: Kondisi Rusak Ringan (Pink) -->
                         <a href="{{ $urlRingan }}" 
-                           class="p-5 rounded-3xl border shadow-sm card-interactive group relative flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl cursor-pointer block {{ $isRinganActive ? 'border-[#EC4899] ring-2 ring-pink-500/50 bg-pink-100/70 shadow-pink-500/20' : 'bg-pink-50/60 border-pink-200/80 hover:border-pink-400' }}"
-                           title="{{ $isRinganActive ? 'Klik untuk membatalkan filter kondisi Rusak Ringan' : 'Klik untuk menyaring aset dengan kondisi Rusak Ringan' }}">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-1.5 flex-wrap">
-                                    <span class="text-xs font-extrabold uppercase tracking-wider transition-colors {{ $isRinganActive ? 'text-pink-700' : 'text-slate-600 group-hover:text-[#EC4899]' }}">Rusak Ringan</span>
-                                    @if($isRinganActive)
-                                        <span class="bg-[#EC4899] text-white text-[9px] px-2 py-0.5 rounded-full font-bold">Filter Aktif</span>
-                                    @endif
+                           class="p-5 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer flex flex-col justify-between group relative {{ $isRinganActive ? 'border-2 border-[#EC4899] bg-pink-50/20 shadow-md shadow-pink-500/10' : 'border border-pink-200/80 bg-pink-50/50 hover:bg-pink-50/80 hover:border-pink-300 shadow-sm' }}"
+                           title="Kondisi Rusak Ringan (Klik untuk menyaring aset kondisi Rusak Ringan)">
+                            <div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-extrabold uppercase tracking-wider text-pink-800">Rusak Ringan</span>
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center bg-pink-100 text-[#EC4899] shadow-xs">
+                                        <i class="fa-solid fa-triangle-exclamation text-xs"></i>
+                                    </div>
                                 </div>
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 {{ $isRinganActive ? 'bg-[#EC4899] text-white shadow-sm scale-105' : 'bg-pink-100 text-[#EC4899] group-hover:bg-[#EC4899] group-hover:text-white' }}">
-                                    <i class="fa-solid fa-triangle-exclamation text-xs"></i>
+                                <div class="mt-2.5">
+                                    <p class="text-3xl font-black text-[#EC4899]">{{ $rekapKondisi['Rusak Ringan'] ?? 0 }}</p>
                                 </div>
                             </div>
-                            <div class="mt-2">
-                                <p class="text-3xl font-black text-[#EC4899]">{{ $rekapKondisi['Rusak Ringan'] }}</p>
-                            </div>
-                            <div class="mt-3 pt-2.5 border-t border-pink-200/70 flex items-center justify-between text-[11px]">
-                                <span class="text-slate-500 font-medium">Perlu Perbaikan</span>
-                                <span class="font-bold {{ $isRinganActive ? 'text-[#EC4899]' : 'text-slate-400 group-hover:text-[#EC4899]' }} transition-colors">
-                                    {{ $isRinganActive ? '✕ Batalkan' : 'Filter Ringan →' }}
-                                </span>
+                            <div class="mt-3 pt-2.5 border-t border-pink-200/60 flex items-center justify-between text-[11px]">
+                                <span class="text-pink-700/80 font-medium">Perlu Perbaikan</span>
+                                @if($isRinganActive)
+                                    <span class="bg-[#EC4899] text-white text-[10px] font-black px-2 py-0.5 rounded-md tracking-wider uppercase shadow-xs">AKTIF</span>
+                                @else
+                                    <span class="text-[#EC4899] group-hover:text-pink-700 font-semibold transition">Pilih &rarr;</span>
+                                @endif
                             </div>
                         </a>
 
-                        <!-- Card 4: Kondisi Rusak Berat -->
+                        <!-- Card 4: Kondisi Rusak Berat (Navy) -->
                         <a href="{{ $urlBerat }}" 
-                           class="p-5 rounded-3xl border shadow-sm card-interactive group relative flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl cursor-pointer block {{ $isBeratActive ? 'border-[#172554] ring-2 ring-slate-900/50 bg-slate-200/90 shadow-slate-900/20' : 'bg-slate-100/80 border-slate-300/80 hover:border-slate-500' }}"
-                           title="{{ $isBeratActive ? 'Klik untuk membatalkan filter kondisi Rusak Berat' : 'Klik untuk menyaring aset dengan kondisi Rusak Berat' }}">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-1.5 flex-wrap">
-                                    <span class="text-xs font-extrabold uppercase tracking-wider transition-colors {{ $isBeratActive ? 'text-[#172554]' : 'text-slate-600 group-hover:text-[#172554]' }}">Rusak Berat</span>
-                                    @if($isBeratActive)
-                                        <span class="bg-[#172554] text-white text-[9px] px-2 py-0.5 rounded-full font-bold">Filter Aktif</span>
-                                    @endif
+                           class="p-5 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer flex flex-col justify-between group relative {{ $isBeratActive ? 'border-2 border-[#EC4899] bg-pink-50/20 shadow-md shadow-pink-500/10' : 'border border-slate-300/80 bg-slate-100/70 hover:bg-slate-100/90 hover:border-slate-400 shadow-sm' }}"
+                           title="Kondisi Rusak Berat (Klik untuk menyaring aset kondisi Rusak Berat)">
+                            <div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-extrabold uppercase tracking-wider text-slate-800">Rusak Berat</span>
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center bg-slate-200 text-[#172554] shadow-xs">
+                                        <i class="fa-solid fa-circle-xmark text-xs"></i>
+                                    </div>
                                 </div>
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 {{ $isBeratActive ? 'bg-[#172554] text-white shadow-sm scale-105' : 'bg-[#172554] text-white group-hover:scale-105' }}">
-                                    <i class="fa-solid fa-circle-xmark text-xs"></i>
+                                <div class="mt-2.5">
+                                    <p class="text-3xl font-black text-[#172554]">{{ $rekapKondisi['Rusak Berat'] ?? 0 }}</p>
                                 </div>
                             </div>
-                            <div class="mt-2">
-                                <p class="text-3xl font-black text-[#172554]">{{ $rekapKondisi['Rusak Berat'] }}</p>
-                            </div>
-                            <div class="mt-3 pt-2.5 border-t border-slate-300/70 flex items-center justify-between text-[11px]">
-                                <span class="text-slate-500 font-medium">Rusak Parah/Afkir</span>
-                                <span class="font-bold {{ $isBeratActive ? 'text-[#172554]' : 'text-slate-400 group-hover:text-[#172554]' }} transition-colors">
-                                    {{ $isBeratActive ? '✕ Batalkan' : 'Filter Berat →' }}
-                                </span>
+                            <div class="mt-3 pt-2.5 border-t border-slate-300/60 flex items-center justify-between text-[11px]">
+                                <span class="text-slate-600 font-medium">Rusak Parah / Afkir</span>
+                                @if($isBeratActive)
+                                    <span class="bg-[#EC4899] text-white text-[10px] font-black px-2 py-0.5 rounded-md tracking-wider uppercase shadow-xs">AKTIF</span>
+                                @else
+                                    <span class="text-slate-500 group-hover:text-[#172554] font-semibold transition">Pilih &rarr;</span>
+                                @endif
                             </div>
                         </a>
 
-                        <!-- Card 5: Kondisi Hilang -->
+                        <!-- Card 5: Kondisi Hilang (Biru Muda) -->
                         <a href="{{ $urlHilang }}" 
-                           class="p-5 rounded-3xl border shadow-sm card-interactive group relative flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl cursor-pointer block col-span-2 sm:col-span-1 {{ $isHilangActive ? 'border-sky-500 ring-2 ring-sky-500/50 bg-sky-100/80 shadow-sky-500/20' : 'bg-sky-50/60 border-sky-200/80 hover:border-sky-400' }}"
-                           title="{{ $isHilangActive ? 'Klik untuk membatalkan filter kondisi Hilang' : 'Klik untuk menyaring aset dengan kondisi Hilang' }}">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-1.5 flex-wrap">
-                                    <span class="text-xs font-extrabold uppercase tracking-wider transition-colors {{ $isHilangActive ? 'text-sky-800' : 'text-slate-600 group-hover:text-sky-600' }}">Hilang</span>
-                                    @if($isHilangActive)
-                                        <span class="bg-sky-600 text-white text-[9px] px-2 py-0.5 rounded-full font-bold">Filter Aktif</span>
-                                    @endif
+                           class="p-5 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer flex flex-col justify-between group relative {{ $isHilangActive ? 'border-2 border-[#EC4899] bg-pink-50/20 shadow-md shadow-pink-500/10' : 'border border-sky-200/80 bg-sky-50/50 hover:bg-sky-50/80 hover:border-sky-300 shadow-sm' }}"
+                           title="Kondisi Hilang (Klik untuk menyaring aset kondisi Hilang)">
+                            <div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-extrabold uppercase tracking-wider text-sky-800">Hilang</span>
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center bg-sky-100 text-sky-600 shadow-xs">
+                                        <i class="fa-solid fa-ghost text-xs"></i>
+                                    </div>
                                 </div>
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 {{ $isHilangActive ? 'bg-sky-600 text-white shadow-sm scale-105' : 'bg-sky-100 text-sky-600 group-hover:bg-sky-600 group-hover:text-white' }}">
-                                    <i class="fa-solid fa-ghost text-xs"></i>
+                                <div class="mt-2.5">
+                                    <p class="text-3xl font-black text-sky-600">{{ $rekapKondisi['Hilang'] ?? 0 }}</p>
                                 </div>
                             </div>
-                            <div class="mt-2">
-                                <p class="text-3xl font-black text-sky-700">{{ $rekapKondisi['Hilang'] }}</p>
-                            </div>
-                            <div class="mt-3 pt-2.5 border-t border-sky-200/70 flex items-center justify-between text-[11px]">
-                                <span class="text-slate-500 font-medium">Tidak Ditemukan</span>
-                                <span class="font-bold {{ $isHilangActive ? 'text-sky-700' : 'text-slate-400 group-hover:text-sky-600' }} transition-colors">
-                                    {{ $isHilangActive ? '✕ Batalkan' : 'Filter Hilang →' }}
-                                </span>
+                            <div class="mt-3 pt-2.5 border-t border-sky-200/60 flex items-center justify-between text-[11px]">
+                                <span class="text-sky-700/80 font-medium">Tidak Ditemukan</span>
+                                @if($isHilangActive)
+                                    <span class="bg-[#EC4899] text-white text-[10px] font-black px-2 py-0.5 rounded-md tracking-wider uppercase shadow-xs">AKTIF</span>
+                                @else
+                                    <span class="text-sky-600 group-hover:text-sky-800 font-semibold transition">Pilih &rarr;</span>
+                                @endif
                             </div>
                         </a>
                     </div>
@@ -529,13 +579,13 @@
                         <div class="flex items-center justify-between bg-blue-50/90 border border-blue-200/80 rounded-2xl px-4 py-2.5 text-xs shadow-sm">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="text-slate-600 font-medium">Filter Kondisi Aktif:</span>
-                                <span class="font-extrabold text-[#172554] bg-white px-3 py-1 rounded-full border border-blue-200 shadow-xs flex items-center gap-1.5">
-                                    <span class="w-2 h-2 rounded-full {{ match($filterKondisi) { 'Baik' => 'bg-[#3B82F6]', 'Rusak Ringan' => 'bg-[#EC4899]', 'Rusak Berat' => 'bg-[#172554]', 'Hilang' => 'bg-sky-500', default => 'bg-slate-400' } }}"></span>
+                                <span class="font-extrabold text-[#172554] bg-white px-3 py-1 rounded-full border border-blue-200 shadow-sm flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full {{ match($filterKondisi) { 'Baik' => 'bg-indigo-500', 'Rusak Ringan' => 'bg-[#EC4899]', 'Rusak Berat' => 'bg-[#172554]', 'Hilang' => 'bg-sky-500', default => 'bg-slate-400' } }}"></span>
                                     {{ $filterKondisi }}
                                 </span>
-                                <span class="text-slate-500 font-semibold">({{ count($laporanAset) }} aset ditampilkan)</span>
+                                <span class="text-slate-500 font-semibold">({{ $laporanAset->total() }} aset ditemukan)</span>
                             </div>
-                            <a href="{{ route('admin.aset', array_merge(request()->except(['filter_kondisi', 'kondisi', 'page']), ['filter_bulan' => $filterBulan, 'filter_tahun' => $filterTahun])) }}" class="text-[#3B82F6] hover:text-blue-800 hover:underline font-bold flex items-center gap-1 transition">
+                            <a href="{{ route('admin.aset', array_merge(request()->except(['filter_kondisi', 'kondisi', 'laporan_page', 'page']), ['filter_bulan' => $filterBulan, 'filter_tahun' => $filterTahun])) }}" class="text-[#3B82F6] hover:text-blue-800 hover:underline font-bold flex items-center gap-1 transition">
                                 <i class="fa-solid fa-xmark"></i>
                                 <span>Reset Filter Kondisi</span>
                             </a>
@@ -549,6 +599,7 @@
                                 <tr>
                                     <th class="px-4 py-3 text-center">No</th>
                                     <th class="px-4 py-3">No. Reg Pemda</th>
+                                    <th class="px-4 py-3">No. Reg KOMINFO</th>
                                     <th class="px-4 py-3">Jenis Barang</th>
                                     <th class="px-4 py-3">Merek / Tipe</th>
                                     <th class="px-4 py-3">Penanggung Jawab</th>
@@ -560,7 +611,7 @@
                                 @forelse($laporanAset as $index => $item)
                                 @php
                                     $badgeColor = match($item->kondisi ?? 'Baik') {
-                                        'Baik' => 'bg-blue-100 text-[#3B82F6] border border-blue-200',
+                                        'Baik' => 'bg-indigo-100 text-indigo-700 border border-indigo-200',
                                         'Rusak Ringan' => 'bg-pink-100 text-[#EC4899] border border-pink-200',
                                         'Rusak Berat' => 'bg-[#172554] text-white border border-slate-900',
                                         'Hilang' => 'bg-sky-100 text-sky-800 border border-sky-200',
@@ -568,8 +619,9 @@
                                     };
                                 @endphp
                                 <tr class="hover:bg-slate-50/80 transition">
-                                    <td class="px-4 py-3 text-center font-medium">{{ $loop->iteration }}</td>
-                                    <td class="px-4 py-3 font-mono font-bold text-[#3B82F6]">{{ $item->no_reg_pemda }}</td>
+                                    <td class="px-4 py-3 text-center font-medium">{{ $laporanAset->firstItem() + $index }}</td>
+                                    <td class="px-4 py-3 font-mono font-bold text-slate-700">{{ $item->no_reg_pemda }}</td>
+                                    <td class="px-4 py-3 font-mono font-bold text-blue-600">{{ $item->no_reg_kominfo ?: '-' }}</td>
                                     <td class="px-4 py-3 font-semibold text-[#172554]">{{ $item->jenis_barang }}</td>
                                     <td class="px-4 py-3">{{ $item->merek_tipe }}</td>
                                     <td class="px-4 py-3 font-medium">{{ $item->penanggung_jawab ?: 'Belum Ditentukan' }}</td>
@@ -582,7 +634,7 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="7" class="px-4 py-8 text-center text-slate-400">
+                                    <td colspan="8" class="px-4 py-8 text-center text-slate-400">
                                         @if(isset($filterKondisi) && $filterKondisi !== 'all')
                                             Tidak ada data aset dengan kondisi <span class="font-bold text-slate-600">"{{ $filterKondisi }}"</span> pada periode filter ini.
                                         @else
@@ -593,6 +645,11 @@
                                 @endforelse
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Navigasi Pagination Tabel Rekap Bulanan (10 data / page) -->
+                    <div class="pt-2">
+                        {{ $laporanAset->appends(request()->query())->links() }}
                     </div>
                 </div>
 
@@ -614,18 +671,27 @@
             </div>
 
             <!-- Konten Utama Label QR Code yang Dicetak -->
-            <div id="printable-qr-label" class="border-2 border-dashed border-[#3B82F6] rounded-2xl p-4 bg-white space-y-3 mx-auto max-w-[280px] shadow-sm text-center">
-                <div class="bg-white p-2 rounded-xl border border-slate-100 shadow-sm inline-block mx-auto">
+            <div id="printable-qr-label" class="border-2 border-dashed border-[#3B82F6] rounded-2xl p-4 bg-white space-y-3 mx-auto max-w-[300px] shadow-sm text-center">
+                <div class="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm inline-block mx-auto">
                     <template x-if="qrItem.id">
-                        <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(qrItem.url)" alt="QR Code" class="w-36 h-36 mx-auto block">
+                        <img :src="qrItem.qr_img || ('https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(qrItem.url))" 
+                             x-on:error="$el.src = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(qrItem.url)"
+                             alt="QR Code" class="w-44 h-44 sm:w-48 sm:h-48 mx-auto block object-contain">
                     </template>
                 </div>
 
                 <div class="space-y-1">
-                    <span data-qr-field="id" class="font-mono text-[#3B82F6] font-bold block text-sm tracking-wide" x-text="qrItem.id"></span>
+                    <div class="flex items-center justify-center gap-1.5 flex-wrap text-xs font-bold font-mono">
+                        <span data-qr-field="id" class="text-[#3B82F6]" x-text="'Pemda: ' + (qrItem.id || '-')"></span>
+                        <span class="text-slate-300">|</span>
+                        <span data-qr-field="kominfo" class="text-emerald-600" x-text="'Kominfo: ' + (qrItem.kominfo || '-')"></span>
+                    </div>
                     <p data-qr-field="jenis" class="font-extrabold text-[#172554] text-sm leading-tight" x-text="qrItem.jenis"></p>
                     <p data-qr-field="merek" class="text-slate-600 font-semibold text-xs" x-text="qrItem.merek"></p>
                     <p data-qr-field="penanggung" class="text-slate-500 font-medium text-[11px]" x-text="qrItem.penanggung"></p>
+                    <div class="pt-1 no-print">
+                        <span class="inline-block text-[10px] text-slate-400 font-mono truncate max-w-[240px]" x-text="qrItem.url" :title="qrItem.url"></span>
+                    </div>
                 </div>
             </div>
 
@@ -661,9 +727,14 @@
             <form action="{{ route('admin.aset.store') }}" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 @csrf
 
-                <div class="md:col-span-2 bg-blue-50/70 p-3 rounded-2xl border border-blue-100 flex items-center space-x-2 text-xs text-[#3B82F6] font-semibold">
-                    <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
-                    <span>No. Reg / ID Pemda akan digenerate otomatis oleh sistem setelah disimpan (Format: REG-YYYY-XXX).</span>
+                <div>
+                    <label class="form-label">No Reg / ID Pemda</label>
+                    <input type="text" name="no_reg_pemda" placeholder="Contoh: 02.03.01.05.01" class="form-input font-mono">
+                </div>
+
+                <div>
+                    <label class="form-label">No Reg KOMINFO</label>
+                    <input type="text" name="no_reg_kominfo" placeholder="Contoh: KOMINFO-2026-001" class="form-input font-mono">
                 </div>
 
                 <div>
@@ -759,13 +830,18 @@
             </div>
 
             <!-- Action URL Safe Encoding to Prevent 404 -->
-            <form :action="'{{ url('/admin/aset') }}/' + encodeURIComponent(editItem.no_reg_pemda)" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form :action="'{{ url('/admin/aset') }}/' + encodeURIComponent(editItem.id || editItem.no_reg_pemda)" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 @csrf
                 @method('PUT')
 
                 <div>
-                    <label class="form-label">No. Reg / ID Pemda <span class="text-xs text-slate-400 font-normal">(Otomatis/Read-Only)</span></label>
-                    <input type="text" name="no_reg_pemda" x-model="editItem.no_reg_pemda" readonly class="form-input font-mono font-bold text-[#3B82F6] bg-slate-100/80 cursor-not-allowed">
+                    <label class="form-label">No Reg / ID Pemda</label>
+                    <input type="text" name="no_reg_pemda" x-model="editItem.no_reg_pemda" placeholder="Contoh: 02.03.01.05.01" class="form-input font-mono font-bold text-[#3B82F6]">
+                </div>
+
+                <div>
+                    <label class="form-label">No Reg KOMINFO</label>
+                    <input type="text" name="no_reg_kominfo" x-model="editItem.no_reg_kominfo" placeholder="Contoh: KOMINFO-2026-001" class="form-input font-mono font-bold text-emerald-600">
                 </div>
 
                 <div>
@@ -877,12 +953,12 @@
             const beratCount = {{ $rekapKondisi['Rusak Berat'] ?? 0 }};
             const hilangCount = {{ $rekapKondisi['Hilang'] ?? 0 }};
 
-            // Mapping Warna Konsisten Sistem
+            // Mapping Warna Konsisten Sistem: Indigo (Baik), Pink (Rusak Ringan), Navy (Rusak Berat), Biru Muda (Hilang)
             const CONDITION_COLORS = {
-                'Baik': '#3B82F6',         // Royal Blue
+                'Baik': '#4F46E5',         // Indigo Harmonis (Non-Hijau)
                 'Rusak Ringan': '#EC4899', // Bright Pink
                 'Rusak Berat': '#172554',  // Dark Navy
-                'Hilang': '#93C5FD'        // Sky Blue
+                'Hilang': '#38BDF8'        // Biru Muda
             };
 
             const chartColors = [
@@ -971,6 +1047,7 @@
             const qrImg = label.querySelector('img');
             const qrSrc = qrImg ? qrImg.src : '';
             const id = label.querySelector('[data-qr-field="id"]')?.innerText || '';
+            const kominfo = label.querySelector('[data-qr-field="kominfo"]')?.innerText || '';
             const jenis = label.querySelector('[data-qr-field="jenis"]')?.innerText || '';
             const merek = label.querySelector('[data-qr-field="merek"]')?.innerText || '';
             const penanggung = label.querySelector('[data-qr-field="penanggung"]')?.innerText || '';
@@ -1000,7 +1077,7 @@
     <meta charset="utf-8">
     <title></title>
     <style>
-        @page {
+        @@page {
             size: 80mm 90mm;
             margin: 0 !important;
         }
@@ -1047,11 +1124,19 @@
         }
         .reg-code {
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-size: 11pt;
+            font-size: 9.5pt;
             font-weight: 700;
             color: #2563EB;
             letter-spacing: 0.5px;
             margin-bottom: 1.5mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .reg-code .kominfo {
+            color: #059669;
         }
         .item-jenis {
             font-size: 10.5pt;
@@ -1078,7 +1163,11 @@
         <div class="qr-wrapper">
             <img src="${qrSrc}" alt="QR Code">
         </div>
-        <div class="reg-code">${id}</div>
+        <div class="reg-code">
+            <span>${id}</span>
+            <span>|</span>
+            <span class="kominfo">${kominfo}</span>
+        </div>
         <div class="item-jenis">${jenis}</div>
         <div class="item-merek">${merek}</div>
         <div class="item-penanggung">${penanggung}</div>

@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('aset_peralatan_mesin', function (Blueprint $table) {
-            $table->string('no_reg_pemda', 100)->primary();
+            $table->id();
+            $table->string('no_reg_pemda', 100)->nullable();
+            $table->string('no_reg_kominfo', 100)->nullable();
             $table->string('penanggung_jawab', 100)->default('Belum Ditentukan');
             $table->string('jenis_barang', 100);
             $table->string('merek_tipe', 100)->nullable();

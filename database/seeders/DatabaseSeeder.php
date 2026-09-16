@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             PegawaiSeeder::class,
             SuratSeeder::class,
+            AsetSeeder::class,
         ]);
     }
 }
