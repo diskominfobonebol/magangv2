@@ -48,13 +48,15 @@
     <!-- Bagian Distribusi Status Pengajuan -->
     <div class="bg-card-gradient rounded-3xl p-6 space-y-4">
         <h3 class="font-bold text-navy">Distribusi Status Pengajuan</h3>
-        <div class="w-full progress-track h-3 flex">
-            <div class="bg-amber-400 h-full transition-all duration-500" style="width: {{ ($progress['menunggu'] / $total_progress) * 100 }}%"></div>
-            <div class="bg-blue-500 h-full transition-all duration-500" style="width: {{ ($progress['disetujui'] / $total_progress) * 100 }}%"></div>
-            <div class="bg-pink-500 h-full transition-all duration-500" style="width: {{ ($progress['ditolak'] / $total_progress) * 100 }}%"></div>
+        <div class="w-full progress-track h-3 flex overflow-hidden rounded-full">
+            <div class="bg-amber-400 h-full transition-all duration-500" style="width: {{ ($progress['menunggu'] / $total_progress) * 100 }}%" title="Menunggu: {{ $progress['menunggu'] }}"></div>
+            <div class="bg-indigo-500 h-full transition-all duration-500" style="width: {{ ($progress['diproses'] / $total_progress) * 100 }}%" title="Diproses: {{ $progress['diproses'] }}"></div>
+            <div class="bg-blue-500 h-full transition-all duration-500" style="width: {{ ($progress['disetujui'] / $total_progress) * 100 }}%" title="Disetujui: {{ $progress['disetujui'] }}"></div>
+            <div class="bg-pink-500 h-full transition-all duration-500" style="width: {{ ($progress['ditolak'] / $total_progress) * 100 }}%" title="Ditolak: {{ $progress['ditolak'] }}"></div>
         </div>
         <div class="flex flex-wrap gap-6 text-xs font-bold text-slate-600 pt-1">
             <span class="flex items-center gap-2"><span class="w-3 h-3 bg-amber-400 rounded-full inline-block"></span> Menunggu ({{ $progress['menunggu'] }})</span>
+            <span class="flex items-center gap-2"><span class="w-3 h-3 bg-indigo-500 rounded-full inline-block"></span> Diproses ({{ $progress['diproses'] }})</span>
             <span class="flex items-center gap-2"><span class="w-3 h-3 bg-blue-500 rounded-full inline-block"></span> Disetujui / ACC ({{ $progress['disetujui'] }})</span>
             <span class="flex items-center gap-2"><span class="w-3 h-3 bg-pink-500 rounded-full inline-block"></span> Ditolak / Dikembalikan ({{ $progress['ditolak'] }})</span>
         </div>
@@ -89,6 +91,7 @@
         <select name="acc" onchange="this.form.submit()" class="form-input">
             <option value="">Semua Status ACC</option>
             <option value="Menunggu" {{ request('acc') == 'Menunggu' ? 'selected' : '' }}>Menunggu</option>
+            <option value="Diproses" {{ request('acc') == 'Diproses' ? 'selected' : '' }}>Diproses</option>
             <option value="Disetujui" {{ request('acc') == 'Disetujui' || request('acc') == 'ACC' ? 'selected' : '' }}>Disetujui / ACC</option>
             <option value="Ditolak" {{ request('acc') == 'Ditolak' ? 'selected' : '' }}>Ditolak</option>
         </select>
@@ -115,8 +118,8 @@
                         $pengajuan = $p->kenpaBerkalas->first(); 
                         $jenisVal = $pengajuan ? $pengajuan->jenis : ''; 
                         $statusJadwalVal = $pengajuan ? $pengajuan->status : 'Aktif'; 
-                        $statusAccVal = $pengajuan ? $pengajuan->status_acc : 'Menunggu';
                         $progres = $pengajuan ? $pengajuan->progres_berkas : 0; 
+                        $accInfo = $p->acc_status_info ?? $p->acc_status;
                     @endphp
                     <tr class="hover:bg-white/50 transition-colors">
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -159,9 +162,11 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if($statusAccVal == 'Disetujui' || $statusAccVal == 'ACC')
+                            @if($accInfo['key'] == 'disetujui')
                                 <span class="badge-blue inline-flex items-center px-3 py-1 rounded-full text-xs font-bold">ACC</span>
-                            @elseif($statusAccVal == 'Ditolak' || $statusAccVal == 'Dikembalikan')
+                            @elseif($accInfo['key'] == 'diproses')
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">{{ $accInfo['label'] }}</span>
+                            @elseif($accInfo['key'] == 'ditolak')
                                 <span class="badge-pink inline-flex items-center px-3 py-1 rounded-full text-xs font-bold">Ditolak</span>
                             @else
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">Menunggu</span>

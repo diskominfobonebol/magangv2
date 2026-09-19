@@ -199,44 +199,120 @@
         </thead>
         <tbody>
             @forelse($surats ?? [] as $index => $item)
+            @php
+                $isSppdPdf = ($item->jenis_surat_id == 1 || str_starts_with($item->nomor_surat, '090/'));
+                
+                $directSppds = [];
+                if ($item->has_sppd && $item->pegawais) {
+                    foreach ($item->pegawais as $p) {
+                        if (!empty($p->pivot->nomor_sppd) && $p->pivot->nomor_sppd !== '-') {
+                            $directSppds[] = [
+                                'nomor' => $p->pivot->nomor_sppd,
+                                'nama' => $p->nama,
+                                'is_child' => false,
+                            ];
+                        }
+                    }
+                }
+
+                $childSppds = [];
+                if ($item->children && $item->children->count() > 0) {
+                    foreach ($item->children as $child) {
+                        if ($child->pegawais && $child->pegawais->count() > 0) {
+                            foreach ($child->pegawais as $cp) {
+                                $cNomor = $cp->pivot->nomor_sppd ?: $child->nomor_surat;
+                                if (!empty($cNomor) && $cNomor !== '-') {
+                                    $childSppds[] = [
+                                        'nomor' => $cNomor,
+                                        'nama' => $cp->nama,
+                                        'is_child' => true,
+                                    ];
+                                }
+                            }
+                        } else {
+                            $childSppds[] = [
+                                'nomor' => $child->nomor_surat,
+                                'nama' => '-',
+                                'is_child' => true,
+                            ];
+                        }
+                    }
+                }
+            @endphp
             <tr>
                 <td style="text-align: center;">{{ $index + 1 }}</td>
                 <td style="text-align: center;">{{ \Carbon\Carbon::parse($item->tgl_surat)->translatedFormat('d/m/Y') }}</td>
                 <td style="font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #1e3a8a;">
-                    {{ $item->nomor_surat }}
+                    @if($isSppdPdf)
+                        @if($item->parent)
+                            {{ $item->parent->nomor_surat }} <span style="font-size: 7pt; color: #1e40af; font-weight: normal;">(Induk)</span>
+                        @elseif(!empty($item->spt_induk_manual))
+                            {{ $item->spt_induk_manual }} <span style="font-size: 7pt; color: #b45309; font-weight: normal;">(Manual)</span>
+                        @else
+                            <span style="color: #666; font-weight: normal;">-</span>
+                        @endif
+                    @else
+                        {{ $item->nomor_surat }}
+                        @if($item->children && $item->children->count() > 0)
+                            <div style="font-size: 7pt; color: #1e40af; font-weight: normal;">[Induk - {{ $item->children->count() }} SPPD Susulan]</div>
+                        @endif
+                    @endif
                 </td>
                 <td style="font-family: 'Courier New', Courier, monospace; font-weight: bold;">
-                    @if($item->has_sppd && $item->pegawais && $item->pegawais->count() > 0)
+                    @if(count($directSppds) > 0 || count($childSppds) > 0)
                         <ul class="personel-list" style="list-style-type: none; padding-left: 0; margin: 0;">
-                            @foreach($item->pegawais as $pegawai)
-                                @php
-                                    $nomorSppd = $pegawai->pivot->nomor_sppd ?? '-';
-                                @endphp
-                                <li style="color: #9d174d; margin-bottom: 2px;">{{ $nomorSppd }}</li>
+                            @foreach($directSppds as $sppd)
+                                <li style="color: #9d174d; margin-bottom: 2px;">
+                                    &bull; {{ $sppd['nomor'] }}
+                                </li>
+                            @endforeach
+                            @foreach($childSppds as $sppd)
+                                <li style="color: #9d174d; margin-bottom: 2px;">
+                                    &bull; {{ $sppd['nomor'] }} <span style="font-size: 6.5pt; color: #4338ca; font-weight: normal;">(Susulan)</span>
+                                </li>
                             @endforeach
                         </ul>
                     @elseif($item->has_sppd)
-                        <span style="color: #9d174d;">SPPD</span>
+                        <span style="color: #b45309; font-size: 7.5pt; font-style: italic;">Data Tidak Lengkap</span>
                     @else
                         <span style="color: #666; font-weight: normal; text-align: center; display: block;">-</span>
                     @endif
                 </td>
                 <td>
-                    <strong>{{ $item->perihal }}</strong>
-                    @if($item->uraian)
-                        <br><span style="font-size: 7.5pt; color: #444;">{{ $item->uraian }}</span>
-                    @endif
+                    {{ $item->uraian ?: '-' }}
                 </td>
                 <td>{{ $item->tujuan }}</td>
                 <td>
                     @if($item->pegawais && $item->pegawais->count() > 0)
-                        <ul class="personel-list">
-                            @foreach($item->pegawais as $pegawai)
-                                <li>{{ $pegawai->nama }} <span style="font-size: 7.5pt; color: #555;">(NIP. {{ $pegawai->nip }})</span></li>
-                            @endforeach
-                        </ul>
+                        <div>
+                            @if($item->children && $item->children->count() > 0)
+                                <div style="font-size: 7pt; font-weight: bold; color: #475569; text-transform: uppercase;">Personel SPT:</div>
+                            @endif
+                            <ul class="personel-list">
+                                @foreach($item->pegawais as $pegawai)
+                                    <li>{{ $pegawai->nama }} <span style="font-size: 7.5pt; color: #555;">(NIP. {{ $pegawai->nip }})</span></li>
+                                @endforeach
+                            </ul>
+                        </div>
                     @else
                         <span style="color: #888; font-style: italic;">-</span>
+                    @endif
+
+                    @if($item->children && $item->children->count() > 0)
+                        @foreach($item->children as $child)
+                            @if($child->pegawais && $child->pegawais->count() > 0)
+                                <div style="margin-top: 4px; padding-top: 3px; border-top: 1px dashed #cbd5e1;">
+                                    <div style="font-size: 7pt; font-weight: bold; color: #9d174d; text-transform: uppercase;">
+                                        Personel SPPD Susulan ({{ $child->nomor_surat }}):
+                                    </div>
+                                    <ul class="personel-list">
+                                        @foreach($child->pegawais as $cp)
+                                            <li>{{ $cp->nama }} <span style="font-size: 7.5pt; color: #555;">(NIP. {{ $cp->nip }})</span></li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+                        @endforeach
                     @endif
                 </td>
                 <td style="text-align: {{ !empty($item->keterangan) ? 'left' : 'center' }};">
