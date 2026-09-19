@@ -15,6 +15,16 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
+    public function showLoginPegawai()
+    {
+        return view('auth.login');
+    }
+
+    public function showLoginMahasiswa()
+    {
+        return view('auth.login_mahasiswa');
+    }
+
     public function login(Request $request)
     {
         $request->validate([

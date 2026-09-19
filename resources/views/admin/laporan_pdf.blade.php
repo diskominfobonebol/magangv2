@@ -94,7 +94,7 @@
             font-size: 9px;
             font-weight: bold;
         }
-        .badge-baik { background-color: #dcfce7; color: #166534; }
+        .badge-baik { background-color: #e0e7ff; color: #3730a3; }
         .badge-rusak-ringan { background-color: #fef9c3; color: #854d0e; }
         .badge-rusak-berat { background-color: #fee2e2; color: #991b1b; }
         .badge-hilang { background-color: #f1f5f9; color: #334155; }
@@ -128,7 +128,7 @@
         <tr>
             <td>
                 <div class="card-title">Kondisi Baik</div>
-                <div class="card-value" style="color: #166534;">{{ $rekap['Baik'] }}</div>
+                <div class="card-value" style="color: #4338ca;">{{ $rekap['Baik'] }}</div>
             </td>
             <td>
                 <div class="card-title">Rusak Ringan</div>
@@ -154,19 +154,21 @@
         <thead>
             <tr>
                 <th style="width: 4%;">No</th>
-                <th style="width: 16%;">No. Reg Pemda</th>
-                <th style="width: 18%;">Jenis Barang</th>
-                <th style="width: 18%;">Merek / Tipe</th>
-                <th style="width: 18%;">Penanggung Jawab</th>
-                <th style="width: 10%;">Tahun</th>
-                <th style="width: 16%;">Kondisi</th>
+                <th style="width: 13%;">No. Reg Pemda</th>
+                <th style="width: 13%;">No. Reg KOMINFO</th>
+                <th style="width: 16%;">Jenis Barang</th>
+                <th style="width: 16%;">Merek / Tipe</th>
+                <th style="width: 16%;">Penanggung Jawab</th>
+                <th style="width: 8%;">Tahun</th>
+                <th style="width: 14%;">Kondisi</th>
             </tr>
         </thead>
         <tbody>
             @forelse($aset as $index => $item)
             <tr>
                 <td style="text-align: center;">{{ $index + 1 }}</td>
-                <td><strong>{{ $item->no_reg_pemda }}</strong></td>
+                <td><strong>{{ $item->no_reg_pemda ?: '-' }}</strong></td>
+                <td><strong style="color: #2563eb;">{{ $item->no_reg_kominfo ?: '-' }}</strong></td>
                 <td>{{ $item->jenis_barang }}</td>
                 <td>{{ $item->merek_tipe }}</td>
                 <td>{{ $item->penanggung_jawab ?: 'Belum Ditentukan' }}</td>
@@ -185,7 +187,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="7" style="text-align: center; padding: 15px; color: #94a3b8;">Tidak ada data aset pada periode ini.</td>
+                <td colspan="8" style="text-align: center; padding: 15px; color: #94a3b8;">Tidak ada data aset pada periode ini.</td>
             </tr>
             @endforelse
         </tbody>

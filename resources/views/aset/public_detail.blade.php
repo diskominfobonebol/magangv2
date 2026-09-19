@@ -31,9 +31,10 @@
     <div class="max-w-xl mx-auto">
         <!-- Header Brand -->
         <div class="text-center mb-6">
-            <div class="flex items-center justify-center space-x-3 mb-3">
-                <img src="{{ asset('images/logo-pemda.png') }}" alt="Logo Pemda" class="h-12 w-auto object-contain">
-                <img src="{{ asset('images/logo-kominfo.png') }}" alt="Logo Kominfo" class="h-12 w-auto object-contain">
+            <div class="flex items-center justify-center gap-3 mb-3">
+                <img src="{{ asset('images/logo-pemda-transparent.png') }}" alt="Logo Pemda" class="h-12 w-auto object-contain drop-shadow-sm">
+                <div class="h-8 w-px bg-slate-300"></div>
+                <img src="{{ asset('images/logo-kominfo-transparent.png') }}" alt="Logo Kominfo" class="h-11 w-auto object-contain drop-shadow-sm">
             </div>
             <h1 class="text-2xl font-black text-[#172554] tracking-tight">Detail Informasi Aset</h1>
             <p class="text-sm text-slate-500 font-medium mt-1">Dinas Komunikasi dan Informatika (Diskominfo) Bone Bolango</p>
@@ -42,10 +43,16 @@
         <!-- Card Main Info -->
         <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden mb-6">
             <!-- Top Status Badge Banner -->
-            <div class="bg-[#172554] text-white px-6 py-4 flex items-center justify-between">
-                <div>
-                    <span class="text-xs text-blue-200 uppercase tracking-wider font-semibold block">No. Reg Pemda</span>
-                    <span class="text-lg font-bold tracking-wide">{{ $aset->no_reg_pemda }}</span>
+            <div class="bg-[#172554] text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+                <div class="space-y-0.5">
+                    <div class="flex items-center space-x-2 text-xs">
+                        <span class="text-blue-200 uppercase tracking-wider font-semibold">Pemda:</span>
+                        <span class="font-bold tracking-wide text-white font-mono">{{ $aset->no_reg_pemda ?: '-' }}</span>
+                    </div>
+                    <div class="flex items-center space-x-2 text-xs">
+                        <span class="text-emerald-300 uppercase tracking-wider font-semibold">KOMINFO:</span>
+                        <span class="font-bold tracking-wide text-emerald-400 font-mono">{{ $aset->no_reg_kominfo ?: '-' }}</span>
+                    </div>
                 </div>
                 <div>
                     @php
@@ -108,7 +115,7 @@
                         </div>
                         <div class="py-2 flex justify-between">
                             <span class="text-slate-500 font-medium">Kondisi Barang</span>
-                            <span class="font-bold {{ $aset->kondisi === 'Baik' ? 'text-emerald-600' : 'text-rose-600' }}">
+                            <span class="font-bold {{ match($aset->kondisi ?? 'Baik') { 'Baik' => 'text-emerald-600', 'Rusak Ringan' => 'text-amber-600', default => 'text-rose-600' } }}">
                                 {{ $aset->kondisi }}
                             </span>
                         </div>
