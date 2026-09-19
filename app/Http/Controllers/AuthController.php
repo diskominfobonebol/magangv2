@@ -77,7 +77,9 @@ class AuthController extends Controller
             $request->session()->regenerate();
             
             $role = (int) $user->role_id;
-            if ($role === 1 || $role === 2) {
+            if ($role === 1) {
+                return redirect()->intended('/dashboard/master');
+            } elseif ($role === 2) {
                 return redirect()->intended('/surat');
             } elseif ($role === 4) {
                 return redirect()->intended('/admin/aset');

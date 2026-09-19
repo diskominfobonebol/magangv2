@@ -192,14 +192,12 @@
                     <div>
                         <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Status Persetujuan (ACC)</p>
                         @php
-                            $accClass = match($kenpa->status_acc) {
-                                'Disetujui', 'ACC' => 'badge-blue',
-                                'Ditolak', 'Dikembalikan' => 'badge-pink',
-                                default => 'bg-amber-100 text-amber-800 border border-amber-200'
-                            };
+                            $accStatusObj = $accInfo ?? ($pegawai->acc_status ?? null);
+                            $badgeClass = $accStatusObj['badge'] ?? 'bg-amber-100 text-amber-800 border border-amber-200';
+                            $statusLabel = $accStatusObj['label'] ?? ($kenpa->status_acc ?? 'Menunggu');
                         @endphp
-                        <span class="px-3 py-1 inline-flex text-xs font-bold rounded-full {{ $accClass }}">
-                            {{ $kenpa->status_acc ?? 'Menunggu' }}
+                        <span class="px-3 py-1 inline-flex text-xs font-bold rounded-full {{ $badgeClass }}">
+                            {{ $statusLabel }}
                         </span>
                     </div>
                     <div class="sm:col-span-2">

@@ -8,12 +8,82 @@ use App\Http\Requests\UpdatePegawaiRequest;
 use App\Models\Pegawai;
 use App\Models\User; 
 use App\Models\KenpaBerkala;
+use App\Models\JenisDokumen;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class KenaikanPangkatController extends Controller
 {
-   public function index(Request $request)
+    public function calculateAccStatus($pegawai, $totalWajibKenpa = null, $totalWajibBerkala = null)
+    {
+        if ($totalWajibKenpa === null) {
+            $totalWajibKenpa = JenisDokumen::where('kategori', 'kenpa')->where('is_wajib', true)->count() ?: 3;
+        }
+        if ($totalWajibBerkala === null) {
+            $totalWajibBerkala = JenisDokumen::where('kategori', 'berkala')->where('is_wajib', true)->count() ?: 3;
+        }
+
+        $pengajuan = $pegawai->kenpaBerkalas ? $pegawai->kenpaBerkalas->first() : null;
+        $statusAccManual = $pengajuan ? $pengajuan->status_acc : 'Menunggu';
+
+        // Ambil dokumen baik dari relasi dokumenPegawais maupun kenpaBerkalas
+        $dokumens = $pegawai->dokumenPegawais;
+        if ((!$dokumens || $dokumens->isEmpty()) && $pengajuan) {
+            $dokumens = $pengajuan->dokumenPegawais;
+        }
+
+        $approvedCount = $dokumens ? $dokumens->where('status_verifikasi', 'disetujui')->count() : 0;
+        $rejectedCount = $dokumens ? $dokumens->where('status_verifikasi', 'ditolak')->count() : 0;
+
+        $jenis = $pengajuan ? $pengajuan->jenis : 'Berkala';
+        $isBerkala = (stripos($jenis, 'berkala') !== false && stripos($jenis, 'pangkat') === false);
+        $totalWajib = $isBerkala ? $totalWajibBerkala : $totalWajibKenpa;
+
+        // 1. Ditolak: Jika ada dokumen yang ditolak atau status manual Ditolak/Dikembalikan
+        if ($rejectedCount > 0 || in_array($statusAccManual, ['Ditolak', 'Dikembalikan'])) {
+            return [
+                'key' => 'ditolak',
+                'label' => 'Ditolak',
+                'badge' => 'badge-pink',
+                'approved_count' => $approvedCount,
+                'total_wajib' => $totalWajib,
+            ];
+        }
+
+        // 2. Disetujui: Jika semua dokumen wajib disetujui (tanpa ditolak) atau status manual Disetujui/ACC
+        if (in_array($statusAccManual, ['Disetujui', 'ACC']) || ($totalWajib > 0 && $approvedCount >= $totalWajib)) {
+            return [
+                'key' => 'disetujui',
+                'label' => 'Disetujui',
+                'badge' => 'badge-blue',
+                'approved_count' => $approvedCount,
+                'total_wajib' => $totalWajib,
+            ];
+        }
+
+        // 3. Diproses: Jika ada minimal 1 dokumen disetujui tapi belum semua, dan tidak ada yang ditolak
+        if ($approvedCount > 0 && $approvedCount < $totalWajib) {
+            return [
+                'key' => 'diproses',
+                'label' => "Diproses ({$approvedCount}/{$totalWajib} disetujui)",
+                'badge' => 'bg-indigo-100 text-indigo-800 border border-indigo-200',
+                'approved_count' => $approvedCount,
+                'total_wajib' => $totalWajib,
+            ];
+        }
+
+        // 4. Menunggu: Belum ada yang disetujui/diperiksa
+        return [
+            'key' => 'menunggu',
+            'label' => 'Menunggu',
+            'badge' => 'bg-amber-100 text-amber-800 border border-amber-200',
+            'approved_count' => $approvedCount,
+            'total_wajib' => $totalWajib,
+        ];
+    }
+
+    public function index(Request $request)
     {
         $search = $request->input('search');
         $jenis = $request->input('jenis');
@@ -21,7 +91,7 @@ class KenaikanPangkatController extends Controller
         $acc = $request->input('acc');
 
         // Query dasar untuk Pegawai ASN (kecuali akun admin dan saring khusus ASN)
-        $queryPegawaiAsli = Pegawai::with('kenpaBerkalas')
+        $queryPegawaiAsli = Pegawai::with(['kenpaBerkalas.dokumenPegawais', 'dokumenPegawais'])
             ->where('kategori_pegawai', 'ASN')
             ->whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai Biasa', 'Pegawai']);
 
@@ -33,40 +103,48 @@ class KenaikanPangkatController extends Controller
             });
         }
 
-        // Filter berdasarkan relasi KenpaBerkala (Jenis, Status Jadwal, Status ACC)
-        if ($jenis || $status || $acc) {
-            $queryPegawaiAsli->whereHas('kenpaBerkalas', function($q) use ($jenis, $status, $acc) {
-                if ($jenis) {
-                    if ($jenis == 'Kenaikan Pangkat') {
-                        $q->where('jenis', 'Kenaikan Pangkat');
-                    } elseif ($jenis == 'Gaji Berkala') {
-                        $q->where('jenis', 'Berkala');
-                    } elseif ($jenis == 'Keduanya') {
-                        $q->where('jenis', 'Keduanya');
-                    }
-                }
-                if ($status) {
-                    $q->where('status', $status);
-                }
-                if ($acc) {
-                    $q->where('status_acc', $acc);
+        // Filter berdasarkan relasi KenpaBerkala (Jenis, Status Jadwal)
+        if ($jenis) {
+            $queryPegawaiAsli->whereHas('kenpaBerkalas', function($q) use ($jenis) {
+                if ($jenis == 'Kenaikan Pangkat') {
+                    $q->where('jenis', 'Kenaikan Pangkat');
+                } elseif ($jenis == 'Gaji Berkala') {
+                    $q->where('jenis', 'Berkala');
+                } elseif ($jenis == 'Keduanya') {
+                    $q->where('jenis', 'Keduanya');
                 }
             });
         }
 
-        // Hitung Metrik Kotak Atas secara Dinamis dari data KenpaBerkala khusus Pegawai ASN
-        $allKenpa = KenpaBerkala::whereHas('pegawai', function($q) {
-            $q->where('kategori_pegawai', 'ASN');
-        })->get();
-        $now = Carbon::now();
+        if ($status) {
+            $queryPegawaiAsli->whereHas('kenpaBerkalas', function($q) use ($status) {
+                $q->where('status', $status);
+            });
+        }
 
+        // Ambil data master jenis dokumen untuk total wajib
+        $totalWajibKenpa = JenisDokumen::where('kategori', 'kenpa')->where('is_wajib', true)->count() ?: 3;
+        $totalWajibBerkala = JenisDokumen::where('kategori', 'berkala')->where('is_wajib', true)->count() ?: 3;
+
+        // Ambil seluruh daftar pegawai yang memenuhi filter query dasar
+        $allPegawais = $queryPegawaiAsli->get();
+
+        $now = Carbon::now();
         $mendekatiJt = 0;
         $lewatJt = 0;
         $belumLengkap = 0;
         $berkasLengkap = 0;
 
-        foreach ($allKenpa as $kb) {
-            if ($kb->tgl_jatuh_tempo) {
+        $progress = [
+            'menunggu' => 0,
+            'diproses' => 0,
+            'disetujui' => 0,
+            'ditolak' => 0,
+        ];
+
+        foreach ($allPegawais as $p) {
+            $kb = $p->kenpaBerkalas->first();
+            if ($kb && $kb->tgl_jatuh_tempo) {
                 $jt = Carbon::parse($kb->tgl_jatuh_tempo);
                 $diffDays = $now->diffInDays($jt, false);
                 if ($diffDays < 0) {
@@ -75,16 +153,25 @@ class KenaikanPangkatController extends Controller
                     $mendekatiJt++;
                 }
             }
-            if (($kb->progres_berkas ?? 0) < 100) {
-                $belumLengkap++;
-            } else {
+            if ($kb && ($kb->progres_berkas ?? 0) >= 100) {
                 $berkasLengkap++;
+            } else {
+                $belumLengkap++;
+            }
+
+            // Hitung status ACC untuk masing-masing pegawai
+            $accInfo = $this->calculateAccStatus($p, $totalWajibKenpa, $totalWajibBerkala);
+            $p->acc_status_info = $accInfo;
+
+            $statusKey = $accInfo['key'];
+            if (isset($progress[$statusKey])) {
+                $progress[$statusKey]++;
+            } else {
+                $progress['menunggu']++;
             }
         }
 
-        $totalPegawai = Pegawai::where('kategori_pegawai', 'ASN')
-            ->whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai Biasa', 'Pegawai'])
-            ->count();
+        $totalPegawai = $allPegawais->count();
 
         $metrics = [
             'total' => $totalPegawai,
@@ -94,19 +181,32 @@ class KenaikanPangkatController extends Controller
             'berkas_lengkap' => $berkasLengkap,
         ];
 
-       // Hitung Distribusi Status Pengajuan Khusus Pegawai ASN
-        $progress = [
-            'menunggu' => KenpaBerkala::whereHas('pegawai', fn($q) => $q->where('kategori_pegawai', 'ASN'))->where('status_acc', 'Menunggu')->count(),
-            'disetujui' => KenpaBerkala::whereHas('pegawai', fn($q) => $q->where('kategori_pegawai', 'ASN'))->whereIn('status_acc', ['Disetujui', 'ACC'])->count(),
-            'ditolak' => KenpaBerkala::whereHas('pegawai', fn($q) => $q->where('kategori_pegawai', 'ASN'))->whereIn('status_acc', ['Ditolak', 'Kembalikan'])->count(),
-        ];
-        
         $total_progress = array_sum($progress);
         if ($total_progress == 0) {
             $total_progress = 1; // Mencegah division by zero
         }
 
-        $pegawai = $queryPegawaiAsli->paginate(5)->withQueryString();
+        // Terapkan filter ACC pada koleksi data jika filter ACC dipilih
+        $filteredCollection = $allPegawais;
+        if ($acc) {
+            $accLower = strtolower($acc);
+            if ($accLower === 'acc') $accLower = 'disetujui';
+
+            $filteredCollection = $allPegawais->filter(function($p) use ($accLower) {
+                return strtolower($p->acc_status_info['key']) === $accLower;
+            });
+        }
+
+        // Paginasi koleksi hasil filter
+        $page = (int) $request->input('page', 1);
+        $perPage = 5;
+        $pegawai = new LengthAwarePaginator(
+            $filteredCollection->forPage($page, $perPage)->values(),
+            $filteredCollection->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         return view('kenaikan-pangkat.index', compact('metrics', 'progress', 'total_progress', 'pegawai'));
     }
@@ -223,7 +323,7 @@ class KenaikanPangkatController extends Controller
     public function show($id)
     {
         $pegawai = Pegawai::where('kategori_pegawai', 'ASN')->with([
-            'kenpaBerkalas',
+            'kenpaBerkalas.dokumenPegawais',
             'dokumenPegawais',
             'surats' => function($q) {
                 $q->with(['jenisSurat', 'pegawais'])
@@ -232,8 +332,9 @@ class KenaikanPangkatController extends Controller
             }
         ])->findOrFail($id);
         $kenpa = $pegawai->kenpaBerkalas->first();
+        $accInfo = $this->calculateAccStatus($pegawai);
 
-        return view('kenaikan-pangkat.show', compact('pegawai', 'kenpa'));
+        return view('kenaikan-pangkat.show', compact('pegawai', 'kenpa', 'accInfo'));
     }
 
    public function kirimWhatsApp($tujuan, $pesan)

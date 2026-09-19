@@ -6,6 +6,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\SuratController;
 use App\Http\Controllers\SuratMasukController;
+use App\Http\Controllers\SuratTelaahController;
+use App\Http\Controllers\SuratSkController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\KenaikanPangkatController;
@@ -38,7 +40,7 @@ Route::get('/aset/{id}/qr-image', [AdminController::class, 'qrImage'])->name('as
 Route::get('/aset/{id}', [AdminController::class, 'publicDetail'])->name('aset.public_detail')->where('id', '^(?!export-pdf$).*');
 Route::get('/api/aset/{id}', [AdminController::class, 'apiDetail'])->name('api.aset.detail')->where('id', '.*');
 
-// Rute Tamu (Belum Login)
+// Rute Autentikasi Tamu (Belum Login)
 Route::middleware('guest')->group(function () {
     // Alur Login Terpisah: Pegawai/Admin vs Mahasiswa
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -59,7 +61,7 @@ Route::middleware('guest')->group(function () {
 
 // Rute Pengguna Terautentikasi (Sudah Login)
 Route::middleware(['auth'])->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout');
 
     // Rute Khusus Admin Master (Role 1) - Pengaturan & Manajemen User
     Route::middleware('role:1,admin')->group(function () {
@@ -85,9 +87,6 @@ Route::middleware(['auth'])->group(function () {
     // Rute Surat Menyurat & Kenaikan Pangkat (Role 1 dan 2)
     Route::middleware('role:1,2')->group(function () {
         Route::get('/dashboard/master', function () {
-            if (in_array(Auth::user()->role_id, [1, 2])) {
-                return redirect()->route('surat.index');
-            }
             $totalPegawai = \App\Models\Pegawai::count();
             $totalSurat = \App\Models\Surat::count();
             $totalSuratMasuk = \App\Models\SuratMasuk::count();
@@ -96,20 +95,25 @@ Route::middleware(['auth'])->group(function () {
             return view('dashboard.master', compact('totalPegawai', 'totalSurat', 'totalSuratMasuk', 'totalAset', 'totalMagang'));
         })->name('dashboard.master');
         
-        // Surat Keluar (SPT & SPPD)
+        // Sub-modul 1: Surat Keluar (SPT & SPPD)
         Route::get('/surat', [SuratController::class, 'index'])->name('surat.index');
+        Route::get('/surat/keluar', [SuratController::class, 'index'])->name('surat.keluar');
         Route::get('/surat/rekap', [SuratController::class, 'rekapIndex'])->name('surat.rekap');
         Route::get('/surat/rekap/export-pdf', [SuratController::class, 'exportRekapPdf'])->name('surat.rekap.exportPdf');
-        Route::get('/surat/api/next-sppd-counter', [SuratController::class, 'getNextSppdCounterApi'])->name('surat.api.nextSppd');
-        Route::post('/surat/api/pegawai-p3k', [SuratController::class, 'storePegawaiP3kApi'])->name('surat.api.storePegawaiP3k');
         Route::get('/surat/create', [SuratController::class, 'create'])->name('surat.create');
         Route::match(['get', 'post'], '/surat/create/step-2', [SuratController::class, 'createStep2'])->name('surat.create.step2');
         Route::match(['get', 'post'], '/surat/create/step-3', [SuratController::class, 'createStep3'])->name('surat.create.step3');
         Route::match(['get', 'post'], '/surat/draft', [SuratController::class, 'storeDraft'])->name('surat.draft');
+        Route::get('/surat/api/next-sppd-counter', [SuratController::class, 'getNextSppdCounterApi'])->name('surat.api.nextSppd');
+        Route::get('/surat/api/check-backdate', [SuratController::class, 'checkBackdateApi'])->name('surat.api.checkBackdate');
+        Route::post('/surat/api/pegawai-p3k', [SuratController::class, 'storePegawaiP3kApi'])->name('surat.api.storePegawaiP3k');
+        Route::post('/surat/sppd/store-standalone', [SuratController::class, 'storeSppdStandalone'])->name('surat.sppd.storeStandalone');
+        Route::post('/surat/{id}/tambah-sppd', [SuratController::class, 'storeSppdChild'])->name('surat.sppd.storeChild');
         Route::post('/surat', [SuratController::class, 'store'])->name('surat.store');
 
-        // Surat Masuk (Daftar, Export PDF & Detail untuk Role 1 dan 2)
-        Route::get('/surat/masuk', [SuratMasukController::class, 'index'])->name('surat-masuk.index');
+        // Sub-modul 2: Surat Masuk
+        Route::get('/surat/masuk', [SuratMasukController::class, 'index'])->name('surat.masuk');
+        Route::get('/surat/masuk-legacy', [SuratMasukController::class, 'index'])->name('surat-masuk.index'); // backward-compatibility
         Route::get('/surat/masuk/export-pdf', [SuratMasukController::class, 'exportPdf'])->name('surat-masuk.export-pdf');
         
         // Rute Mutasi Surat Masuk Khusus Admin Kasubag (Role 2)
@@ -119,13 +123,35 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/surat/masuk/{id}/edit', [SuratMasukController::class, 'edit'])->name('surat-masuk.edit');
             Route::put('/surat/masuk/{id}', [SuratMasukController::class, 'update'])->name('surat-masuk.update');
             Route::delete('/surat/masuk/{id}', [SuratMasukController::class, 'destroy'])->name('surat-masuk.destroy');
+            Route::get('/surat/masuk/{id}/download', [SuratMasukController::class, 'downloadFile'])->name('surat-masuk.download');
         });
 
         Route::get('/surat/masuk/{id}', [SuratMasukController::class, 'show'])->name('surat-masuk.show');
 
+        // Sub-modul 3: Surat Telaah
+        Route::get('/surat/telaah', [SuratTelaahController::class, 'index'])->name('surat.telaah');
+        Route::get('/surat/telaah/export-pdf', [SuratTelaahController::class, 'exportRekapPdf'])->name('surat.telaah.exportPdf');
+        Route::get('/surat/telaah/create', [SuratTelaahController::class, 'create'])->name('surat.telaah.create');
+        Route::post('/surat/telaah', [SuratTelaahController::class, 'store'])->name('surat.telaah.store');
+        Route::get('/surat/telaah/{id}', [SuratTelaahController::class, 'show'])->name('surat.telaah.show');
+        Route::delete('/surat/telaah/{id}', [SuratTelaahController::class, 'destroy'])->name('surat.telaah.destroy');
+
+        // Sub-modul 4: Surat SK
+        Route::get('/surat/sk', [SuratSkController::class, 'index'])->name('surat.sk');
+        Route::get('/surat/sk/export-pdf', [SuratSkController::class, 'exportRekapPdf'])->name('surat.sk.exportPdf');
+        Route::get('/surat/sk/create', [SuratSkController::class, 'create'])->name('surat.sk.create');
+        Route::post('/surat/sk', [SuratSkController::class, 'store'])->name('surat.sk.store');
+        Route::get('/surat/sk/{id}', [SuratSkController::class, 'show'])->name('surat.sk.show');
+        Route::get('/surat/sk/{id}/download', [SuratSkController::class, 'download'])->name('surat.sk.download');
+        Route::delete('/surat/sk/{id}', [SuratSkController::class, 'destroy'])->name('surat.sk.destroy');
+
+        // Operasi Dokumen Surat Keluar (SPT/SPPD)
         Route::get('/surat/{id}', [SuratController::class, 'show'])->name('surat.show');
         Route::get('/surat/{id}/edit', [SuratController::class, 'edit'])->name('surat.edit');
         Route::match(['put', 'post'], '/surat/{id}', [SuratController::class, 'update'])->name('surat.update');
+        Route::post('/surat/{id}/upload-file', [SuratController::class, 'uploadFileSurat'])->name('surat.uploadFile');
+        Route::post('/surat/{id}/retry-drive', [SuratController::class, 'retryDriveUpload'])->name('surat.retryDrive');
+        Route::post('/surat/{id}/hubungkan-spt', [SuratController::class, 'hubungkanSpt'])->name('surat.hubungkanSpt');
         Route::get('/surat/{id}/download', [SuratController::class, 'downloadPdf'])->name('surat.download');
         Route::get('/surat/{id}/print', [SuratController::class, 'print'])->name('surat.print');
         Route::delete('/surat/{id}', [SuratController::class, 'destroy'])->name('surat.destroy');
@@ -168,7 +194,7 @@ Route::middleware(['auth'])->group(function () {
     // Rute untuk Pegawai (Role 3)
     Route::middleware('role:3,pegawai')->group(function () {
         Route::get('/dashboard/pegawai', [\App\Http\Controllers\PegawaiDashboardController::class, 'index'])->name('dashboard.pegawai');
-        Route::post('/dashboard/pegawai/upload', [\App\Http\Controllers\PegawaiDashboardController::class, 'uploadDokumen'])->name('dashboard.pegawai.upload');
+        Route::post('/dashboard/pegawai/dokumen/upload', [\App\Http\Controllers\PegawaiDashboardController::class, 'uploadDokumen'])->name('dashboard.pegawai.dokumen.upload');
         Route::delete('/dashboard/pegawai/dokumen/{id}', [\App\Http\Controllers\PegawaiDashboardController::class, 'destroyDokumen'])->name('dashboard.pegawai.dokumen.destroy');
     });
 
@@ -180,67 +206,4 @@ Route::middleware(['auth'])->group(function () {
         if ($role === 5) return redirect()->route('mahasiswa.dashboard');
         return redirect()->route('dashboard.pegawai');
     })->name('dashboard');
-});
-
-// ==========================================
-// RUTE UJI COBA KIRIM WHATSAPP (FONNTE)
-// ==========================================
-Route::get('/test-wa', function() {
-    $token = Setting::where('key', 'wa_token')->value('value');
-    $device = Setting::where('key', 'wa_device')->value('value');
-
-    $tujuan = '62895346804700'; 
-    $pesan = 'Halo! Ini adalah pesan uji coba otomatis dari sistem Sinosip & Fonnte.';
-
-    $payload = [
-        'target' => $tujuan,
-        'message' => $pesan,
-    ];
-
-    if ($device) {
-        $payload['device'] = $device;
-    }
-
-    $response = Http::withHeaders([
-        'Authorization' => $token,
-    ])->post('https://api.fonnte.com/send', $payload);
-
-    return $response->json();
-});
-
-// ==========================================
-// RUTE UJI COBA PENGINGAT H-1 BULAN (ASN ONLY)
-// ==========================================
-Route::get('/test-reminder', function() {
-    $targetTanggal = Carbon::now()->addMonth()->format('Y-m-d');
-
-    $dataPengajuan = KenpaBerkala::with('pegawai')
-        ->whereHas('pegawai', function($q) {
-            $q->where('kategori_pegawai', 'ASN');
-        })
-        ->whereDate('tgl_jatuh_tempo', $targetTanggal)
-        ->get();
-
-    $controller = new KenaikanPangkatController();
-    $hasilKirim = [];
-
-    foreach ($dataPengajuan as $item) {
-        $pegawai = $item->pegawai;
-        if ($pegawai && $pegawai->no_wa) {
-            $pesan = "Halo *{$pegawai->nama}*, ini adalah pengingat otomatis dari sistem Sinosip. Masa *{$item->jenis}* Anda akan jatuh tempo pada tanggal *{$item->tgl_jatuh_tempo}* (1 bulan lagi). Mohon segera persiapkan berkas yang diperlukan.";
-            
-            $response = $controller->kirimWhatsApp($pegawai->no_wa, $pesan);
-            $hasilKirim[] = [
-                'nama' => $pegawai->nama,
-                'no_wa' => $pegawai->no_wa,
-                'response' => $response
-            ];
-        }
-    }
-
-    return response()->json([
-        'target_tanggal_pencarian' => $targetTanggal,
-        'jumlah_terkirim' => count($hasilKirim),
-        'detail' => $hasilKirim
-    ]);
 });

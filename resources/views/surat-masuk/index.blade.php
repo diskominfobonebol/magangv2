@@ -4,18 +4,6 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto space-y-6" x-data="suratMasukManager()">
-    
-    <!-- Sub-Tab Navigasi Modul Surat Menyurat -->
-    <div class="flex items-center gap-2 border-b border-blue-200/60 pb-3">
-        <a href="{{ route('surat.index') }}" class="px-5 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 bg-white text-slate-600 hover:text-primary hover:bg-blue-50/60 border border-blue-200/50 shadow-sm">
-            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-            Surat Keluar (SPT & SPPD)
-        </a>
-        <a href="{{ route('surat-masuk.index') }}" class="px-5 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 bg-primary text-white shadow-md shadow-blue-500/25">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
-            Surat Masuk
-        </a>
-    </div>
 
     <!-- Header Utama & Tombol Aksi -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -513,7 +501,7 @@
                 <button type="button" @click="cancelDelete()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer">
                     Batal
                 </button>
-                <form :action="'/surat/masuk/' + deleteSuratId" method="POST" class="inline">
+                <form :action="'{{ url('surat/masuk') }}/' + deleteSuratId" method="POST" class="inline">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-500/25 flex items-center gap-1.5 transition-all cursor-pointer">
