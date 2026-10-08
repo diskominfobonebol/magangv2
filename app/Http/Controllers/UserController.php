@@ -244,6 +244,7 @@ class UserController extends Controller
         }
 
         $user->password = Hash::make($newPassword);
+        $user->must_change_password = true;
         $user->save();
 
         return back()->with('reset_success', [

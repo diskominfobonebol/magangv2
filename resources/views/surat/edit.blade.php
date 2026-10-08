@@ -597,11 +597,23 @@
                                 </div>
                             </div>
                             
-                            <p class="text-[11px] text-slate-500 leading-relaxed">
-                                💡 File akan otomatis diunggah ke Google Drive ke folder sesuai tahun dan jenis surat setelah Anda menyimpan perubahan.
-                            </p>
-                            @error('file_surat')
-                                <p class="text-rose-500 text-xs mt-1">{{ $message }}</p>
+                        <!-- Field Link Google Drive Bukti Fisik -->
+                        <div class="pt-2 border-t border-slate-100">
+                            <label for="link_google_drive" class="form-label text-xs">Link Google Drive <span class="text-slate-400 font-normal lowercase">(opsional)</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                                </div>
+                                <input type="url" 
+                                       id="link_google_drive" 
+                                       name="link_google_drive" 
+                                       value="{{ old('link_google_drive', $surat->link_google_drive ?? $surat->google_drive_url ?? '') }}" 
+                                       placeholder="https://drive.google.com/file/d/.../view?usp=sharing" 
+                                       class="form-input !pl-10 font-mono text-xs @error('link_google_drive') !border-rose-400 !ring-1 !ring-rose-400 @enderror">
+                            </div>
+                            <span class="text-[11px] text-slate-400 mt-1 block">Tautan ke scan atau foto surat fisik yang disimpan di Google Drive.</span>
+                            @error('link_google_drive')
+                                <p class="text-[11px] text-rose-600 font-bold mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 

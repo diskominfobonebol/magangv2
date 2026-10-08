@@ -7,6 +7,7 @@ use App\Models\SuratTelaah;
 use App\Models\Surat;
 use App\Models\Pegawai;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class SuratTelaahController extends Controller
 {
@@ -22,18 +23,16 @@ class SuratTelaahController extends Controller
                                     ->count();
 
         // Ambil daftar tahun arsip distinct dari database + 5 tahun ke belakang
-        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
-        $yearSql = $isSqlite ? "strftime('%Y', tanggal_telaah)" : "YEAR(tanggal_telaah)";
-        $dbYears = SuratTelaah::selectRaw("{$yearSql} as yr")
+        $driver = DB::connection()->getDriverName();
+        $yearExpr = $driver === 'sqlite' ? "strftime('%Y', tanggal_telaah)" : 'YEAR(tanggal_telaah)';
+        $dbYears = SuratTelaah::selectRaw("{$yearExpr} as yr")
             ->whereNotNull('tanggal_telaah')
             ->distinct()
             ->orderByDesc('yr')
             ->pluck('yr')
-            ->map(fn($y) => (int)$y)
-            ->filter()
             ->toArray();
 
-        $defaultYears = range((int)date('Y'), (int)date('Y') - 5);
+        $defaultYears = range(date('Y'), date('Y') - 5);
         $availableYears = array_values(array_unique(array_merge($dbYears, $defaultYears)));
         rsort($availableYears);
 
@@ -147,6 +146,11 @@ class SuratTelaahController extends Controller
             'uraian'         => 'required|string',
             'tujuan'         => 'required|string|max:255',
             'keterangan'     => 'nullable|string|max:500',
+            'link_google_drive' => [
+                'nullable',
+                'url',
+                'regex:/^(https?:\/\/)?([\w-]+\.)*drive\.google\.com\/.+$/i'
+            ],
             'pegawai_id'     => 'required|array|min:1',
             'pegawai_id.*'   => 'exists:pegawais,id',
         ];
@@ -164,6 +168,8 @@ class SuratTelaahController extends Controller
             'tujuan.required'         => 'Tujuan tugas / instansi wajib diisi.',
             'tujuan.max'              => 'Tujuan tugas maksimal 255 karakter.',
             'keterangan.max'          => 'Keterangan tambahan maksimal 500 karakter.',
+            'link_google_drive.url'   => 'Link Google Drive harus berupa format URL yang valid (diawali https:// atau http://).',
+            'link_google_drive.regex' => 'Link harus berupa tautan Google Drive yang valid (contoh: https://drive.google.com/...).',
             'pegawai_id.required'     => 'Pilih minimal 1 personil yang ditugaskan.',
             'pegawai_id.min'          => 'Pilih minimal 1 personil yang ditugaskan.',
             'pegawai_id.*.exists'     => 'Data personil yang dipilih tidak valid.',
@@ -178,14 +184,15 @@ class SuratTelaahController extends Controller
         }
 
         $telaah = SuratTelaah::create([
-            'nomor_telaah'   => $nomorTelaah,
-            'tanggal_telaah' => $validated['tanggal_telaah'],
-            'spt_id'         => $validated['spt_id'] ?? null,
-            'sppd_id'        => $validated['sppd_id'] ?? null,
-            'uraian'         => $validated['uraian'],
-            'tujuan'         => $validated['tujuan'],
-            'keterangan'     => $validated['keterangan'] ?? null,
-            'created_by'     => Auth::id(),
+            'nomor_telaah'      => $nomorTelaah,
+            'tanggal_telaah'    => $validated['tanggal_telaah'],
+            'spt_id'            => $validated['spt_id'] ?? null,
+            'sppd_id'           => $validated['sppd_id'] ?? null,
+            'uraian'            => $validated['uraian'],
+            'tujuan'            => $validated['tujuan'],
+            'keterangan'        => $validated['keterangan'] ?? null,
+            'link_google_drive' => $validated['link_google_drive'] ?? null,
+            'created_by'        => Auth::id(),
         ]);
 
         if (!empty($request->pegawai_id)) {
@@ -204,15 +211,16 @@ class SuratTelaahController extends Controller
 
         if (request()->wantsJson() || request()->ajax()) {
             return response()->json([
-                'id'             => $telaah->id,
-                'nomor_telaah'   => $telaah->nomor_telaah,
-                'tanggal_telaah' => $telaah->tanggal_telaah->format('Y-m-d'),
+                'id'                => $telaah->id,
+                'nomor_telaah'      => $telaah->nomor_telaah,
+                'tanggal_telaah'    => $telaah->tanggal_telaah->format('Y-m-d'),
                 'tanggal_formatted' => \Carbon\Carbon::parse($telaah->tanggal_telaah)->translatedFormat('d F Y'),
-                'uraian'         => $telaah->uraian,
-                'tujuan'         => $telaah->tujuan,
-                'keterangan'     => $telaah->keterangan ?? '-',
-                'spt_nomor'      => $telaah->spt ? $telaah->spt->nomor_surat : '-',
-                'spt_tgl'        => $telaah->spt ? \Carbon\Carbon::parse($telaah->spt->tgl_surat)->translatedFormat('d F Y') : '-',
+                'uraian'            => $telaah->uraian,
+                'tujuan'            => $telaah->tujuan,
+                'keterangan'        => $telaah->keterangan ?? '-',
+                'link_google_drive' => $telaah->link_google_drive,
+                'spt_nomor'         => $telaah->spt ? $telaah->spt->nomor_surat : '-',
+                'spt_tgl'           => $telaah->spt ? \Carbon\Carbon::parse($telaah->spt->tgl_surat)->translatedFormat('d F Y') : '-',
                 'pegawais'       => $telaah->pegawais->map(function ($p) {
                     return [
                         'nama'    => $p->nama,

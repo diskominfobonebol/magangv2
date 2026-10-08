@@ -118,26 +118,50 @@
             </div>
         </div>
 
-        <!-- SEKSI 2: UPLOAD DOKUMEN FISIK (PDF) -->
-        <div class="space-y-3">
+        <!-- SEKSI 2: UPLOAD DOKUMEN FISIK & LINK GOOGLE DRIVE -->
+        <div class="space-y-4">
             <div class="flex items-center gap-2 pb-2 border-b border-slate-100">
                 <span class="w-6 h-6 rounded-full bg-blue-100 text-primary flex items-center justify-center text-xs font-bold">2</span>
                 <div>
                     <h4 class="text-xs font-bold text-navy uppercase tracking-wider">Lampiran Berkas Fisik (Opsional)</h4>
-                    <p class="text-[11px] text-slate-500">Upload scan dokumen fisik SK untuk kemudahan arsip & unduhan.</p>
+                    <p class="text-[11px] text-slate-500">Cantumkan tautan Google Drive atau upload scan dokumen fisik SK untuk kemudahan arsip & unduhan.</p>
                 </div>
             </div>
 
-            <div class="border-2 border-dashed border-blue-200 rounded-2xl p-6 bg-blue-50/20 text-center hover:bg-blue-50/40 transition-colors">
-                <div class="flex flex-col items-center justify-center">
-                    <div class="w-12 h-12 rounded-2xl bg-blue-100 text-primary flex items-center justify-center text-xl mb-2">
-                        📎
+            <!-- Field Link Google Drive Bukti Fisik -->
+            <div>
+                <label for="link_google_drive" class="form-label text-xs">Link Google Drive <span class="text-slate-400 font-normal lowercase">(opsional)</span></label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
                     </div>
-                    <label class="cursor-pointer">
-                        <span class="btn-pill-secondary px-4 py-2 text-xs font-bold inline-block">Pilih Berkas Lampiran</span>
-                        <input type="file" name="file_sk" class="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" @change="handleFile($event)">
-                    </label>
-                    <p class="text-xs text-slate-500 mt-2" x-text="fileName ? 'File Terpilih: ' + fileName : 'Format PDF, DOC, DOCX, JPG, PNG (Maks 10 MB)'"></p>
+                    <input type="url" 
+                           id="link_google_drive" 
+                           name="link_google_drive" 
+                           value="{{ old('link_google_drive') }}" 
+                           placeholder="https://drive.google.com/file/d/.../view?usp=sharing" 
+                           class="form-input !pl-10 font-mono text-xs @error('link_google_drive') !border-rose-400 !ring-1 !ring-rose-400 @enderror">
+                </div>
+                <span class="text-[11px] text-slate-400 mt-1 block">Tautan ke scan atau berkas SK yang disimpan di Google Drive (opsional).</span>
+                @error('link_google_drive')
+                    <p class="text-[11px] text-rose-600 font-bold mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <!-- Upload File Langsung (Opsional) -->
+            <div>
+                <label class="form-label text-xs">Atau Upload File Dokumen (PDF/DOC/Gambar)</label>
+                <div class="border-2 border-dashed border-blue-200 rounded-2xl p-6 bg-blue-50/20 text-center hover:bg-blue-50/40 transition-colors">
+                    <div class="flex flex-col items-center justify-center">
+                        <div class="w-12 h-12 rounded-2xl bg-blue-100 text-primary flex items-center justify-center text-xl mb-2">
+                            📎
+                        </div>
+                        <label class="cursor-pointer">
+                            <span class="btn-pill-secondary px-4 py-2 text-xs font-bold inline-block">Pilih Berkas Lampiran</span>
+                            <input type="file" name="file_sk" class="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" @change="handleFile($event)">
+                        </label>
+                        <p class="text-xs text-slate-500 mt-2" x-text="fileName ? 'File Terpilih: ' + fileName : 'Format PDF, DOC, DOCX, JPG, PNG (Maks 10 MB)'"></p>
+                    </div>
                 </div>
             </div>
         </div>

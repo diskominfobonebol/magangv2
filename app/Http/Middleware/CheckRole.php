@@ -22,36 +22,35 @@ class CheckRole
         $user = auth()->user();
         $userRoleId = (int) $user->role_id;
 
-        // Flatten roles if passed as comma-separated strings (e.g. "role:bendahara_barang,admin")
+        // Flatten roles if passed as comma-separated strings (e.g. "role:bendahara_barang,admin,4,1")
         $allowedRoles = [];
         foreach ($roles as $role) {
             foreach (explode(',', (string) $role) as $r) {
-                $allowedRoles[] = trim($r);
+                $trimmed = trim($r);
+                $allowedRoles[] = $trimmed;
+                if (is_numeric($trimmed)) {
+                    $allowedRoles[] = (int) $trimmed;
+                }
             }
         }
 
-        // Check if numeric ID matches directly
-        if (in_array((string) $userRoleId, $allowedRoles, true) || in_array($userRoleId, $allowedRoles, true)) {
-            return $next($request);
-        }
+        // Map role aliases
+        $roleNameMap = [
+            1 => ['1', 1, 'admin', 'admin_master', 'master'],
+            2 => ['2', 2, 'kasubag', 'admin_kasubag'],
+            3 => ['3', 3, 'pegawai'],
+            4 => ['4', 4, 'bendahara_barang', 'bendahara'],
+            5 => ['5', 5, 'mahasiswa'],
+        ];
 
-        // Map user's role to accepted string aliases
-        $userAliases = match ($userRoleId) {
-            1 => ['1', 'admin', 'admin_master', 'master', 'bendahara_barang', 'bendahara'], // Admin Master has super access
-            2 => ['2', 'kasubag', 'admin_kasubag', 'admin'],
-            3 => ['3', 'pegawai'],
-            4 => ['4', 'bendahara_barang', 'bendahara'],
-            5 => ['5', 'mahasiswa'],
-            default => [(string) $userRoleId],
-        };
+        $userMatches = $roleNameMap[$userRoleId] ?? [$userRoleId, (string) $userRoleId];
 
-        // If any allowed role matches any of the user's aliases, allow access
-        foreach ($allowedRoles as $allowed) {
-            if (in_array(strtolower($allowed), $userAliases, true)) {
+        foreach ($userMatches as $match) {
+            if (in_array($match, $allowedRoles, true)) {
                 return $next($request);
             }
         }
 
-        abort(403, 'Akses Ditolak: Anda tidak memiliki izin untuk mengakses halaman ini.');
+        abort(403, 'Akses Ditolak: Anda tidak memiliki izin untuk melakukan aksi atau mengakses halaman ini.');
     }
 }

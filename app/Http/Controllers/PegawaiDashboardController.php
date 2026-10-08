@@ -42,26 +42,93 @@ class PegawaiDashboardController extends Controller
                   ->latest('tgl_surat')
                   ->latest('id');
             }, 
-            'kenpaBerkalas.dokumenPegawais'
+            'kenpaBerkalas.dokumenPegawais.jenisDokumen'
         ]);
 
-        $kenpa = $pegawai->kenpaBerkalas->first();
-        $jenisDokumens = JenisDokumen::all();
+        // Cari record pengajuan Kenpa & Berkala
+        $kenpaRecord = $pegawai->kenpaBerkalas->first(function($kb) {
+            return stripos($kb->jenis, 'pangkat') !== false || stripos($kb->jenis, 'kenpa') !== false || strcasecmp($kb->jenis, 'keduanya') === 0;
+        });
 
-        // Hitung otomatis progres persentase setiap kali halaman dimuat
-        if ($kenpa) {
-            $totalSyarat = ($kenpa->jenis == 'Kenpa') ? 10 : 7;
-            $jumlahDiunggah = $kenpa->dokumenPegawais()->count();
-            
-            $progres = ($totalSyarat > 0) ? min(round(($jumlahDiunggah / $totalSyarat) * 100), 100) : 0;
-            
-            if ($kenpa->progres_berkas != $progres) {
-                $kenpa->progres_berkas = $progres;
-                $kenpa->save();
-            }
+        $berkalaRecord = $pegawai->kenpaBerkalas->first(function($kb) {
+            return (stripos($kb->jenis, 'berkala') !== false && stripos($kb->jenis, 'pangkat') === false) || strcasecmp($kb->jenis, 'keduanya') === 0;
+        });
+
+        $hasKenpa = !is_null($kenpaRecord);
+        $hasBerkala = !is_null($berkalaRecord);
+        $hasBoth = $hasKenpa && $hasBerkala;
+
+        // Default tab
+        if ($hasBoth) {
+            $activeTab = 'kenpa';
+        } elseif ($hasBerkala) {
+            $activeTab = 'berkala';
+        } else {
+            $activeTab = 'kenpa';
         }
 
-        return view('dashboard.pegawai', compact('pegawai', 'kenpa', 'jenisDokumens', 'user'));
+        // Ambil master jenis dokumen terpisah per kategori
+        $jenisDokumensKenpa = JenisDokumen::where('kategori', 'kenpa')->get();
+        $jenisDokumensBerkala = JenisDokumen::where('kategori', 'berkala')->get();
+
+        // Hitung otomatis progres persentase setiap kali halaman dimuat
+        if ($kenpaRecord) {
+            $this->calculateAndSaveProgress($kenpaRecord);
+        }
+        if ($berkalaRecord && (!$kenpaRecord || $berkalaRecord->id !== $kenpaRecord->id)) {
+            $this->calculateAndSaveProgress($berkalaRecord);
+        }
+
+        // Backward compatibility
+        $kenpa = $kenpaRecord ?? $berkalaRecord ?? $pegawai->kenpaBerkalas->first();
+        $jenisDokumens = ($activeTab === 'berkala') ? $jenisDokumensBerkala : $jenisDokumensKenpa;
+
+        return view('dashboard.pegawai', compact(
+            'pegawai',
+            'kenpa',
+            'kenpaRecord',
+            'berkalaRecord',
+            'hasKenpa',
+            'hasBerkala',
+            'hasBoth',
+            'activeTab',
+            'jenisDokumensKenpa',
+            'jenisDokumensBerkala',
+            'jenisDokumens',
+            'user'
+        ));
+    }
+
+    public function calculateAndSaveProgress(KenpaBerkala $kb)
+    {
+        $isKenpa = (stripos($kb->jenis, 'pangkat') !== false || stripos($kb->jenis, 'kenpa') !== false);
+        $isBerkala = (stripos($kb->jenis, 'berkala') !== false && stripos($kb->jenis, 'pangkat') === false);
+        $isKeduanya = (strcasecmp($kb->jenis, 'keduanya') === 0 || ($isKenpa && stripos($kb->jenis, 'berkala') !== false));
+
+        if ($isKeduanya) {
+            $totalWajib = JenisDokumen::where('is_wajib', true)->count() ?: 6;
+            $uploadedCount = $kb->dokumenPegawais()->count();
+        } elseif ($isBerkala) {
+            $totalWajib = JenisDokumen::where('kategori', 'berkala')->where('is_wajib', true)->count() ?: 3;
+            $uploadedCount = $kb->dokumenPegawais()
+                ->whereHas('jenisDokumen', function($q) {
+                    $q->where('kategori', 'berkala');
+                })->count();
+        } else {
+            $totalWajib = JenisDokumen::where('kategori', 'kenpa')->where('is_wajib', true)->count() ?: 3;
+            $uploadedCount = $kb->dokumenPegawais()
+                ->whereHas('jenisDokumen', function($q) {
+                    $q->where('kategori', 'kenpa');
+                })->count();
+        }
+
+        $progres = ($totalWajib > 0) ? min(round(($uploadedCount / $totalWajib) * 100), 100) : 0;
+        if ($kb->progres_berkas != $progres) {
+            $kb->progres_berkas = $progres;
+            $kb->save();
+        }
+
+        return $progres;
     }
 
     public function uploadDokumen(Request $request)
@@ -90,11 +157,7 @@ class PegawaiDashboardController extends Controller
         // Hitung ulang progres otomatis setelah upload
         $kenpa = KenpaBerkala::find($request->kenpa_berkala_id);
         if ($kenpa) {
-            $totalSyarat = ($kenpa->jenis == 'Kenpa') ? 10 : 7;
-            $jumlahDiunggah = $kenpa->dokumenPegawais()->count();
-            
-            $kenpa->progres_berkas = ($totalSyarat > 0) ? min(round(($jumlahDiunggah / $totalSyarat) * 100), 100) : 0;
-            $kenpa->save();
+            $this->calculateAndSaveProgress($kenpa);
         }
 
         return redirect()->back()->with('success', 'Dokumen berhasil diunggah dan sedang menunggu verifikasi.');
@@ -114,10 +177,7 @@ class PegawaiDashboardController extends Controller
 
         // Hitung ulang progres berkas setelah dihapus
         if ($kenpa) {
-            $totalSyarat = ($kenpa->jenis == 'Kenpa') ? 10 : 7;
-            $jumlahDiunggah = $kenpa->dokumenPegawais()->count();
-            $kenpa->progres_berkas = ($totalSyarat > 0) ? min(round(($jumlahDiunggah / $totalSyarat) * 100), 100) : 0;
-            $kenpa->save();
+            $this->calculateAndSaveProgress($kenpa);
         }
 
         return redirect()->back()->with('success', 'Berkas berhasil dihapus. Silakan unggah kembali dokumen yang benar.');

@@ -183,10 +183,7 @@ class SuratController extends Controller
                     ->paginate(5)
                     ->withQueryString();
 
-        $allPegawais = \App\Models\Pegawai::whereNotIn('id', [1, 2, 3, 4])
-            ->whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai', 'Bendahara Barang', 'Pegawai Biasa'])
-            ->orderByHierarki()
-            ->get();
+        $allPegawais = \App\Models\Pegawai::whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai', 'Pegawai Biasa', 'Bendahara Barang'])->orderByHierarki()->get();
         $nextSppdCounter = $this->getNextSppdCounter();
 
         // Ambil daftar SPT aktif beserta metadata penomoran SPPD
@@ -258,15 +255,12 @@ class SuratController extends Controller
             ]);
         } else {
             if (!session('s_tgl_surat')) {
-                session(['s_tgl_surat' => date('Y-m-d')]);
+                return redirect()->route('surat.create')->with('error', 'Silakan tentukan tanggal nomor surat terlebih dahulu.');
             }
         }
 
-        // Saring pegawai agar akun Admin Master, Admin Kasubag, Bendahara, dan Pegawai Biasa tidak ikut terpanggil
-        $pegawais = \App\Models\Pegawai::whereNotIn('id', [1, 2, 3, 4])
-            ->whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai', 'Bendahara Barang', 'Pegawai Biasa'])
-            ->orderByHierarki()
-            ->get();
+        // Saring pegawai agar akun Admin Master, Admin Kasubag, dan Pegawai Biasa (ID 1, 2, 3) tidak ikut terpanggil
+        $pegawais = \App\Models\Pegawai::whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai', 'Pegawai Biasa', 'Bendahara Barang'])->orderByHierarki()->get();
 
         return view('surat.create-step-2', compact('pegawais'));
     }
@@ -329,10 +323,7 @@ class SuratController extends Controller
             return redirect()->route('surat.index')->with('error', 'Data surat tidak ditemukan, mungkin sudah dihapus sebelumnya.');
         }
 
-        $allPegawais = \App\Models\Pegawai::whereNotIn('id', [1, 2, 3, 4])
-            ->whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai', 'Bendahara Barang', 'Pegawai Biasa'])
-            ->orderByHierarki()
-            ->get();
+        $allPegawais = \App\Models\Pegawai::whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai', 'Pegawai Biasa', 'Bendahara Barang'])->orderByHierarki()->get();
         $sptUrut = SppdNumberingService::extractSptSequence($surat->nomor_surat);
         $nextSppdCounter = SppdNumberingService::getNextSppdSequence();
         $seriesSummary = SppdNumberingService::getSeriesSummaryForFrontend();
@@ -347,10 +338,7 @@ class SuratController extends Controller
         if (!$surat) {
             return redirect()->route('surat.index')->with('error', 'Data surat tidak ditemukan, mungkin sudah dihapus sebelumnya.');
         }
-        $pegawais = \App\Models\Pegawai::whereNotIn('id', [1, 2, 3, 4])
-            ->whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai', 'Bendahara Barang', 'Pegawai Biasa'])
-            ->orderByHierarki()
-            ->get();
+        $pegawais = \App\Models\Pegawai::whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai', 'Pegawai Biasa', 'Bendahara Barang'])->orderByHierarki()->get();
         
         // Ambil daftar SPT dari database untuk opsi pilihan SPT Induk jika surat berjenis SPPD
         $sptList = Surat::where(function($q) {
@@ -378,9 +366,16 @@ class SuratController extends Controller
         $driveService = $driveService ?: app(GoogleDriveService::class);
         $request->validate([
             'keterangan' => 'nullable|string|max:150',
+            'link_google_drive' => [
+                'nullable',
+                'url',
+                'regex:/^(https?:\/\/)?([\w-]+\.)*drive\.google\.com\/.+$/i'
+            ],
             'file_surat' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ], [
             'keterangan.max' => 'Keterangan tambahan maksimal 150 karakter.',
+            'link_google_drive.url' => 'Link Google Drive harus berupa format URL yang valid (diawali https:// atau http://).',
+            'link_google_drive.regex' => 'Link harus berupa tautan Google Drive yang valid (contoh: https://drive.google.com/...).',
             'file_surat.mimes' => 'Format file surat harus berupa PDF, JPG, JPEG, atau PNG.',
             'file_surat.max' => 'Ukuran file surat maksimal 10 MB.',
         ]);
@@ -477,6 +472,7 @@ class SuratController extends Controller
                 'tujuan' => $tujuan,
                 'uraian' => $uraian,
                 'keterangan' => $keterangan,
+                'link_google_drive' => $request->input('link_google_drive'),
                 'nomor_surat' => $nomorSurat,
                 'jenis_surat_id' => $jenisSuratId,
                 'jenis_penugasan' => $jenisPenugasan,
@@ -655,12 +651,19 @@ class SuratController extends Controller
             'tgl_surat' => 'required|date',
             'pegawai_id' => 'required|array|min:1',
             'keterangan' => 'nullable|string|max:150',
+            'link_google_drive' => [
+                'nullable',
+                'url',
+                'regex:/^(https?:\/\/)?([\w-]+\.)*drive\.google\.com\/.+$/i'
+            ],
             'file_surat' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ], [
             'tgl_surat.required' => 'Tanggal SPPD wajib diisi.',
             'pegawai_id.required' => 'Minimal harus memilih satu personel yang ditugaskan.',
             'pegawai_id.min' => 'Minimal harus memilih satu personel yang ditugaskan.',
             'keterangan.max' => 'Keterangan tambahan maksimal 150 karakter.',
+            'link_google_drive.url' => 'Link Google Drive harus berupa format URL yang valid (diawali https:// atau http://).',
+            'link_google_drive.regex' => 'Link harus berupa tautan Google Drive yang valid (contoh: https://drive.google.com/...).',
             'file_surat.mimes' => 'Format file surat harus berupa PDF, JPG, JPEG, atau PNG.',
             'file_surat.max' => 'Ukuran file surat maksimal 10 MB.',
         ]);
@@ -671,10 +674,11 @@ class SuratController extends Controller
         $tujuan = $request->input('tujuan', $parentSpt->tujuan);
         $uraian = $request->input('uraian', $parentSpt->uraian ?: 'Perjalanan Dinas');
         $keterangan = $request->input('keterangan');
+        $linkGoogleDrive = $request->input('link_google_drive');
         $pegawaiIds = array_values(array_unique(array_filter((array) $request->input('pegawai_id', []))));
         $jenisPenugasan = $this->determineJenisPenugasan($tujuan);
 
-        $childSurat = DB::transaction(function () use ($parentSpt, $tglSurat, $tujuan, $uraian, $keterangan, $pegawaiIds, $jenisPenugasan) {
+        $childSurat = DB::transaction(function () use ($parentSpt, $tglSurat, $tujuan, $uraian, $keterangan, $linkGoogleDrive, $pegawaiIds, $jenisPenugasan) {
             $usedSppdBatch = [];
 
             // Generate nomor SPPD untuk dokumen child
@@ -698,6 +702,7 @@ class SuratController extends Controller
                 'tujuan' => $tujuan,
                 'uraian' => $uraian,
                 'keterangan' => $keterangan,
+                'link_google_drive' => $linkGoogleDrive,
                 'has_sppd' => 1,
                 'status' => 'Terbit',
                 'created_by' => auth()->id() ?? 1,
@@ -747,6 +752,11 @@ class SuratController extends Controller
             'tgl_surat' => 'required|date',
             'pegawai_id' => 'required|array|min:1',
             'keterangan' => 'nullable|string|max:150',
+            'link_google_drive' => [
+                'nullable',
+                'url',
+                'regex:/^(https?:\/\/)?([\w-]+\.)*drive\.google\.com\/.+$/i'
+            ],
             'file_surat' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ], [
             'parent_id.required_without' => 'SPT Induk wajib dipilih dari database atau diketik nomornya secara manual.',
@@ -755,6 +765,8 @@ class SuratController extends Controller
             'pegawai_id.required' => 'Minimal harus memilih satu personel yang ditugaskan.',
             'pegawai_id.min' => 'Minimal harus memilih satu personel yang ditugaskan.',
             'keterangan.max' => 'Keterangan tambahan maksimal 150 karakter.',
+            'link_google_drive.url' => 'Link Google Drive harus berupa format URL yang valid (diawali https:// atau http://).',
+            'link_google_drive.regex' => 'Link harus berupa tautan Google Drive yang valid (contoh: https://drive.google.com/...).',
             'file_surat.mimes' => 'Format file surat harus berupa PDF, JPG, JPEG, atau PNG.',
             'file_surat.max' => 'Ukuran file surat maksimal 10 MB.',
         ]);
@@ -768,10 +780,11 @@ class SuratController extends Controller
         $tujuan = $request->input('tujuan', ($parentSpt ? $parentSpt->tujuan : '-'));
         $uraian = $request->input('uraian', ($parentSpt ? $parentSpt->uraian : 'Perjalanan Dinas'));
         $keterangan = $request->input('keterangan');
+        $linkGoogleDrive = $request->input('link_google_drive');
         $pegawaiIds = array_values(array_unique(array_filter((array) $request->input('pegawai_id', []))));
         $jenisPenugasan = $this->determineJenisPenugasan($tujuan);
 
-        $childSurat = DB::transaction(function () use ($parentId, $parentSpt, $parentSptNomor, $sptIndukManual, $tglSurat, $tujuan, $uraian, $keterangan, $pegawaiIds, $jenisPenugasan) {
+        $childSurat = DB::transaction(function () use ($parentId, $parentSpt, $parentSptNomor, $sptIndukManual, $tglSurat, $tujuan, $uraian, $keterangan, $linkGoogleDrive, $pegawaiIds, $jenisPenugasan) {
             $usedSppdBatch = [];
 
             $firstSppdNomor = SppdNumberingService::generateNextSppdNumber(
@@ -794,6 +807,7 @@ class SuratController extends Controller
                 'tujuan' => $tujuan,
                 'uraian' => $uraian,
                 'keterangan' => $keterangan,
+                'link_google_drive' => $linkGoogleDrive,
                 'has_sppd' => 1,
                 'status' => 'Terbit',
                 'created_by' => auth()->id() ?? 1,
@@ -840,11 +854,18 @@ class SuratController extends Controller
 
         $rules = [
             'keterangan' => 'nullable|string|max:150',
+            'link_google_drive' => [
+                'nullable',
+                'url',
+                'regex:/^(https?:\/\/)?([\w-]+\.)*drive\.google\.com\/.+$/i'
+            ],
             'tgl_surat' => 'nullable|date',
             'file_surat' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ];
         $messages = [
             'keterangan.max' => 'Keterangan tambahan maksimal 150 karakter.',
+            'link_google_drive.url' => 'Link Google Drive harus berupa format URL yang valid (diawali https:// atau http://).',
+            'link_google_drive.regex' => 'Link harus berupa tautan Google Drive yang valid (contoh: https://drive.google.com/...).',
             'file_surat.mimes' => 'Format file surat harus berupa PDF, JPG, JPEG, atau PNG.',
             'file_surat.max' => 'Ukuran file surat maksimal 10 MB.',
         ];
@@ -863,6 +884,7 @@ class SuratController extends Controller
         $tujuan = $request->input('tujuan', session('s_tujuan', 'Kementerian Dalam Negeri, Jakarta'));
         $uraian = $request->input('uraian', session('s_uraian', ''));
         $keterangan = $request->input('keterangan', session('s_keterangan', ''));
+        $linkGoogleDrive = $request->input('link_google_drive', session('s_link_google_drive'));
         
         $rawPegawaiIds = $request->input('pegawai_id') ?: session('s_pegawai_id', []);
         $pegawaiIds = array_values(array_unique(array_filter((array) $rawPegawaiIds)));
@@ -887,7 +909,7 @@ class SuratController extends Controller
         $manualNumber = ($modeNomor === 'manual') ? ($request->input('nomor_surat_manual') ?? $request->input('nomor_surat') ?? session('s_nomor_surat')) : null;
         $jenisPenugasan = $this->determineJenisPenugasan($tujuan);
 
-        $surat = DB::transaction(function () use ($request, $jenisSuratId, $tglSurat, $tujuan, $uraian, $keterangan, $pegawaiIds, $buatSppd, $parentId, $sptIndukManual, $manualNumber, $modeNomor, $jenisPenugasan) {
+        $surat = DB::transaction(function () use ($request, $jenisSuratId, $tglSurat, $tujuan, $uraian, $keterangan, $linkGoogleDrive, $pegawaiIds, $buatSppd, $parentId, $sptIndukManual, $manualNumber, $modeNomor, $jenisPenugasan) {
             $usedSppdBatch = [];
 
             if ($jenisSuratId === 1) {
@@ -910,6 +932,7 @@ class SuratController extends Controller
                 'tujuan' => $tujuan,
                 'uraian' => $uraian,
                 'keterangan' => $keterangan,
+                'link_google_drive' => $linkGoogleDrive,
                 'has_sppd' => (int)$buatSppd,
                 'status' => 'Terbit',
                 'created_by' => auth()->id() ?? 1,
@@ -944,7 +967,7 @@ class SuratController extends Controller
                                     $parentSuratIdForPersonnel, 
                                     $tglSurat, 
                                     null, 
-                                    $usedSppdBatch,
+                                    $usedSppdBatch, 
                                     $jenisPenugasan
                                 );
                             }
@@ -964,7 +987,7 @@ class SuratController extends Controller
             $this->handleSuratFileUpload($request, $surat, $driveService);
         }
 
-        session()->forget(['s_tgl_surat', 's_tujuan', 's_jenis_surat_id', 's_mode_nomor', 's_nomor_surat', 's_uraian', 's_keterangan', 's_pegawai_id', 's_buat_sppd', 's_parent_id', 's_spt_induk_manual']);
+        session()->forget(['s_tgl_surat', 's_tujuan', 's_jenis_surat_id', 's_mode_nomor', 's_nomor_surat', 's_uraian', 's_keterangan', 's_link_google_drive', 's_pegawai_id', 's_buat_sppd', 's_parent_id', 's_spt_induk_manual']);
 
         return redirect()->route('surat.index')->with('success', 'Surat berhasil diterbitkan!');
     }
@@ -974,8 +997,15 @@ class SuratController extends Controller
         try {
             $request->validate([
                 'keterangan' => 'nullable|string|max:150',
+                'link_google_drive' => [
+                    'nullable',
+                    'url',
+                    'regex:/^(https?:\/\/)?([\w-]+\.)*drive\.google\.com\/.+$/i'
+                ],
             ], [
                 'keterangan.max' => 'Keterangan tambahan maksimal 150 karakter.',
+                'link_google_drive.url' => 'Link Google Drive harus berupa format URL yang valid (diawali https:// atau http://).',
+                'link_google_drive.regex' => 'Link harus berupa tautan Google Drive yang valid (contoh: https://drive.google.com/...).',
             ]);
 
             $tglSurat = $request->input('tgl_surat', session('s_tgl_surat'));
@@ -993,6 +1023,7 @@ class SuratController extends Controller
             $tujuan = $request->filled('tujuan') ? $request->input('tujuan') : (session('s_tujuan') ?: '-');
             $uraian = $request->filled('uraian') ? $request->input('uraian') : (session('s_uraian') ?: null);
             $keterangan = $request->filled('keterangan') ? $request->input('keterangan') : (session('s_keterangan') ?: null);
+            $linkGoogleDrive = $request->input('link_google_drive', session('s_link_google_drive'));
             $pegawaiIds = $request->filled('pegawai_id') ? (array)$request->input('pegawai_id') : (session('s_pegawai_id') ?: []);
 
             $parentId = null;
@@ -1009,7 +1040,7 @@ class SuratController extends Controller
             $manualNumber = ($modeNomor === 'manual') ? ($request->input('nomor_surat_manual') ?? $request->input('nomor_surat') ?? session('s_nomor_surat')) : null;
             $jenisPenugasan = $this->determineJenisPenugasan($tujuan);
 
-            return DB::transaction(function () use ($request, $jenisSuratId, $tglSurat, $tujuan, $uraian, $keterangan, $pegawaiIds, $parentId, $sptIndukManual, $manualNumber, $modeNomor, $jenisPenugasan) {
+            return DB::transaction(function () use ($request, $jenisSuratId, $tglSurat, $tujuan, $uraian, $keterangan, $linkGoogleDrive, $pegawaiIds, $parentId, $sptIndukManual, $manualNumber, $modeNomor, $jenisPenugasan) {
                 $usedSppdBatch = [];
 
                 if ($jenisSuratId === 1) {
@@ -1032,6 +1063,7 @@ class SuratController extends Controller
                     'tujuan' => $tujuan,
                     'uraian' => $uraian,
                     'keterangan' => $keterangan,
+                    'link_google_drive' => $linkGoogleDrive,
                     'has_sppd' => ($jenisSuratId == 1 ? 1 : 0),
                     'status' => 'Draft',
                     'created_by' => auth()->id() ?? 1,

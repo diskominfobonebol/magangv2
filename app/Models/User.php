@@ -25,6 +25,16 @@ class User extends Authenticatable
         'role_id',
         'is_active',
         'instansi_bidang',
+        'must_change_password',
+    ];
+
+    /**
+     * The model's default values for attributes.
+     *
+     * @var array
+     */
+    protected $attributes = [
+        'must_change_password' => true,
     ];
 
     /**
@@ -47,6 +57,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
         ];
     }
 

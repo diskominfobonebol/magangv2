@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('dokumen_pegawais', function (Blueprint $table) {
-            $table->text('keterangan_admin')->nullable()->after('status_verifikasi');
+            if (!Schema::hasColumn('dokumen_pegawais', 'keterangan_admin')) {
+                $table->text('keterangan_admin')->nullable()->after('status_verifikasi');
+            }
         });
     }
 
@@ -22,7 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('dokumen_pegawais', function (Blueprint $table) {
-            $table->dropColumn('keterangan_admin');
+            if (Schema::hasColumn('dokumen_pegawais', 'keterangan_admin')) {
+                $table->dropColumn('keterangan_admin');
+            }
         });
     }
 };

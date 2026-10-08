@@ -17,10 +17,12 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                 Kembali
             </a>
+            @if(auth()->user()->role_id == 2)
             <a href="{{ route('kenaikan-pangkat.edit', $pegawai->id) }}" class="btn-pill-primary px-4 py-2 text-xs font-bold gap-1.5 shadow-md">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                 Jalan Pintas Edit
             </a>
+            @endif
         </div>
     </div>
 
@@ -115,7 +117,7 @@
                                         
                                         <button type="button" 
                                                 @click="openDetail({{ json_encode($jsonData) }})" 
-                                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-50 text-primary hover:bg-primary hover:text-white font-bold text-[11px] border border-blue-200/60 shadow-sm transition-all cursor-pointer"
+                                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-50 text-primary hover:bg-primary hover:text-white font-bold text-[11px] border border-blue-200/60 shadow-xs transition-all cursor-pointer"
                                                 title="Lihat Detail Surat">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                             Detail
@@ -271,7 +273,8 @@
                                         <div>
                                             <a href="{{ Storage::url($dokumen->file_path) }}" target="_blank" class="btn-pill-primary px-3 py-1 text-xs font-bold">Lihat File</a>
                                         </div>
-                                        <!-- Form Verifikasi Admin -->
+                                        @if(auth()->user()->role_id == 2)
+                                        <!-- Form Verifikasi Admin (Khusus Kasubag) -->
                                         <form action="{{ route('kenaikan-pangkat.dokumen.verifikasi', $dokumen->id) }}" method="POST" class="mt-2 text-left bg-white/90 p-3 rounded-2xl border border-blue-200/60 w-full sm:w-64 shadow-sm">
                                             @csrf
                                             @method('PUT')
@@ -286,6 +289,7 @@
                                                 Simpan Verifikasi
                                             </button>
                                         </form>
+                                        @endif
                                     </div>
                                     @else
                                     <span class="text-slate-400 italic text-xs">File tidak tersedia</span>

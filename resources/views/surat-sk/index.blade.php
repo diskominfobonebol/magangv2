@@ -16,7 +16,7 @@
                 <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 Export Rekapitulasi PDF
             </a>
-            @if(auth()->user()->role_id == 2 || auth()->user()->role_id == 1)
+            @if(auth()->user()->role_id == 2)
             <a href="{{ route('surat.sk.create') }}" class="btn-pill-primary px-5 py-2.5 text-xs font-bold gap-2 shadow-lg shadow-blue-500/25 flex items-center" title="Buat Surat Keputusan (SK) Baru">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 + Buat SK Baru
@@ -178,6 +178,7 @@
                             'tanggal_formatted' => \Carbon\Carbon::parse($item->tanggal_sk)->translatedFormat('d F Y'),
                             'tentang' => $item->tentang,
                             'keterangan' => $item->keterangan ?? '-',
+                            'link_google_drive' => $item->link_google_drive,
                             'has_file' => !empty($item->file_sk),
                             'download_url' => !empty($item->file_sk) ? route('surat.sk.download', $item->id) : null,
                         ];
@@ -198,14 +199,27 @@
                             {{ $item->keterangan ?? '-' }}
                         </td>
                         <td class="py-4 px-3 text-center whitespace-nowrap">
-                            @if($item->file_sk)
-                                <a href="{{ route('surat.sk.download', $item->id) }}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors" title="Unduh Berkas Lampiran">
-                                    <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                    PDF Lampiran
-                                </a>
-                            @else
-                                <span class="text-slate-400 text-xs italic">Tanpa Berkas</span>
-                            @endif
+                            <div class="flex flex-col items-center justify-center gap-1.5">
+                                @if($item->link_google_drive)
+                                    <a href="{{ $item->link_google_drive }}" target="_blank" rel="noopener noreferrer" 
+                                       class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white transition-all" 
+                                       title="Buka berkas di Google Drive">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                        Google Drive
+                                    </a>
+                                @endif
+                                @if($item->file_sk)
+                                    <a href="{{ route('surat.sk.download', $item->id) }}" 
+                                       class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-primary border border-blue-200 hover:bg-blue-100 transition-colors" 
+                                       title="Unduh Berkas Lampiran">
+                                        <svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                        PDF Lampiran
+                                    </a>
+                                @endif
+                                @if(!$item->link_google_drive && !$item->file_sk)
+                                    <span class="text-slate-400 text-xs italic">Tanpa Berkas</span>
+                                @endif
+                            </div>
                         </td>
                         <td class="py-4 px-3 text-center whitespace-nowrap">
                             <div class="flex items-center justify-center gap-1.5">
@@ -228,8 +242,8 @@
                                 </a>
                                 @endif
 
-                                <!-- Tombol Hapus -->
-                                @if(auth()->user()->role_id == 2 || auth()->user()->role_id == 1)
+                                <!-- Tombol Hapus (Khusus Kasubag) -->
+                                @if(auth()->user()->role_id == 2)
                                 <button type="button" 
                                         @click="confirmDelete('{{ $item->id }}', '{{ $item->nomor_sk }}')" 
                                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white font-bold text-xs border border-rose-200/60 shadow-sm transition-all cursor-pointer"
@@ -303,26 +317,33 @@
                     <p class="text-slate-600 bg-white p-3 rounded-xl border border-slate-100 leading-relaxed" x-text="detailData.keterangan || '-'"></p>
                 </div>
 
-                <!-- Berkas Digital Lampiran -->
-                <div>
+                <!-- Link Google Drive Bukti Fisik -->
+                <div class="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3" x-show="detailData.link_google_drive">
+                    <div>
+                        <span class="text-emerald-800 font-bold block mb-0.5">Bukti Scan Fisik Surat</span>
+                        <span class="text-slate-500 text-[11px] truncate block max-w-xs" x-text="detailData.link_google_drive"></span>
+                    </div>
+                    <a :href="detailData.link_google_drive" target="_blank" rel="noopener noreferrer" class="btn-pill-primary !bg-emerald-600 hover:!bg-emerald-700 px-4 py-2 text-xs font-bold gap-1.5 flex items-center shadow-md flex-shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        Buka di Google Drive &rarr;
+                    </a>
+                </div>
+
+                <!-- Berkas Digital Lampiran PDF -->
+                <div x-show="detailData.has_file">
                     <span class="text-slate-400 font-bold block mb-1">Berkas Lampiran PDF:</span>
-                    <template x-if="detailData.has_file">
-                        <div class="flex items-center justify-between p-3 rounded-xl border border-emerald-200 bg-emerald-50">
-                            <div class="flex items-center gap-2">
-                                <span class="text-xl">📄</span>
-                                <div>
-                                    <p class="font-bold text-emerald-900 text-xs">Dokumen SK Resmi Terlampir</p>
-                                    <p class="text-[10px] text-emerald-700">Format PDF / Dokumen Digital</p>
-                                </div>
+                    <div class="flex items-center justify-between p-3 rounded-xl border border-blue-200 bg-blue-50/40">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">📄</span>
+                            <div>
+                                <p class="font-bold text-navy text-xs">Dokumen SK Resmi Terlampir</p>
+                                <p class="text-[10px] text-slate-500">Format PDF / Dokumen Digital</p>
                             </div>
-                            <a :href="detailData.download_url" class="btn-pill-primary !bg-emerald-600 hover:!bg-emerald-700 px-4 py-1.5 text-xs font-bold">
-                                Unduh Berkas
-                            </a>
                         </div>
-                    </template>
-                    <template x-if="!detailData.has_file">
-                        <p class="text-slate-400 italic">Tidak ada berkas fisik yang diunggah saat penerbitan.</p>
-                    </template>
+                        <a :href="detailData.download_url" class="btn-pill-primary !bg-blue-600 hover:!bg-blue-700 px-4 py-1.5 text-xs font-bold">
+                            Unduh Berkas
+                        </a>
+                    </div>
                 </div>
             </div>
 

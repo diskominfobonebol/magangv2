@@ -18,7 +18,7 @@
                     <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     Export Rekapitulasi PDF
                 </a>
-                @if(auth()->user()->role_id == 2 || auth()->user()->role_id == 1)
+                @if(auth()->user()->role_id == 2)
                 <div class="flex items-center gap-2">
                     <a href="{{ route('surat.create') }}" class="btn-pill-primary px-5 py-2.5 text-xs font-bold gap-2 shadow-lg shadow-blue-500/25 flex items-center" title="Buat Surat Perintah Tugas (SPT) Baru">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
@@ -348,7 +348,8 @@
                                 'file_name' => $item->file_name,
                                 'file_path' => $item->file_path,
                                 'google_drive_file_id' => $item->google_drive_file_id,
-                                'google_drive_url' => $item->google_drive_url,
+                                'google_drive_url' => $item->link_google_drive ?: $item->google_drive_url,
+                                'link_google_drive' => $item->link_google_drive,
                                 'drive_upload_status' => $item->drive_upload_status ?? 'none',
                                 'all_sppds' => $allSppdList,
                                 'pegawais' => $item->pegawais->map(function($p) use ($item) {
@@ -497,8 +498,8 @@
                             <td class="py-4 px-3 text-center whitespace-nowrap">
                                 <div class="flex items-center justify-center gap-1.5">
                                     <!-- Tombol Berkas Drive / Upload Cepat -->
-                                    @if($item->google_drive_url)
-                                        <a href="{{ $item->google_drive_url }}" 
+                                    @if($item->link_google_drive || $item->google_drive_url)
+                                        <a href="{{ $item->link_google_drive ?: $item->google_drive_url }}" 
                                            target="_blank" 
                                            rel="noopener noreferrer"
                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white font-bold text-xs border border-emerald-200/60 shadow-sm transition-all"
@@ -525,8 +526,8 @@
                                         Lihat
                                     </button>
 
-                                    <!-- Tombol Hapus -->
-                                    @if(auth()->user()->role_id == 2 || auth()->user()->role_id == 1)
+                                    <!-- Tombol Hapus (Khusus Kasubag) -->
+                                    @if(auth()->user()->role_id == 2)
                                     @php
                                         $childCount = $item->children ? $item->children->count() : 0;
                                         $childNomors = $item->children ? $item->children->pluck('nomor_surat')->filter()->values()->all() : [];
@@ -591,8 +592,9 @@
                     <p class="text-xs text-slate-500 font-semibold" x-text="'Nomor: ' + (activeSurat.nomor_surat || '-')"></p>
                 </div>
 
-                <!-- 3 Tombol Aksi Header: Edit, Simpan, Tutup/Kembali -->
+                <!-- 3 Tombol Aksi Header: Edit, Simpan (Kasubag), Tutup/Kembali -->
                 <div class="flex items-center gap-2.5">
+                    @if(auth()->user()->role_id == 2)
                     <!-- Tombol 1: Edit (Ikon edit) -->
                     <button type="button" 
                             @click="isEditing = !isEditing" 
@@ -615,6 +617,7 @@
                         </svg>
                         Simpan
                     </button>
+                    @endif
 
                     <!-- Tombol 3: Tutup/Kembali (Ikon X) -->
                     <button type="button" 

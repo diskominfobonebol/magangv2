@@ -183,7 +183,7 @@ class AuthTest extends TestCase
         $user = User::where('email', 'admin@kominfo.bonebolango.id')->first();
         $response = $this->actingAs($user)->post('/logout');
 
-        $response->assertRedirect('/');
+        $response->assertRedirect('/login');
         $this->assertGuest();
     }
 

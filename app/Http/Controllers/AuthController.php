@@ -75,6 +75,11 @@ class AuthController extends Controller
 
             Auth::login($user, $request->boolean('remember'));
             $request->session()->regenerate();
+
+            // Jika user wajib ganti sandi pada login pertama
+            if ($user->must_change_password) {
+                return redirect()->route('password.force_reset');
+            }
             
             $role = (int) $user->role_id;
             if ($role === 1) {
@@ -125,11 +130,46 @@ class AuthController extends Controller
         return redirect()->route('mahasiswa.dashboard')->with('success', 'Registrasi berhasil! Silakan lengkapi pendaftaran magang Anda.');
     }
 
+    public function showForceResetPassword()
+    {
+        return view('auth.force-reset-password');
+    }
+
+    public function forceResetPassword(Request $request)
+    {
+        $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'password.required' => 'Password baru wajib diisi.',
+            'password.min' => 'Password baru minimal harus 8 karakter.',
+            'password.confirmed' => 'Konfirmasi password baru tidak cocok.',
+        ]);
+
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $user->password = Hash::make($request->password);
+        $user->must_change_password = false;
+        $user->save();
+
+        $role = (int) $user->role_id;
+        if ($role === 1) {
+            return redirect()->route('dashboard.master')->with('success', 'Password Anda berhasil diperbarui! Selamat datang di sistem Sinosip.');
+        } elseif ($role === 2) {
+            return redirect('/surat')->with('success', 'Password Anda berhasil diperbarui! Selamat datang di sistem Sinosip.');
+        } elseif ($role === 4) {
+            return redirect()->intended('/admin/aset')->with('success', 'Password Anda berhasil diperbarui!');
+        } elseif ($role === 5) {
+            return redirect()->intended('/mahasiswa/dashboard')->with('success', 'Password Anda berhasil diperbarui!');
+        } else {
+            return redirect()->route('dashboard.pegawai')->with('success', 'Password Anda berhasil diperbarui! Selamat datang di sistem Sinosip.');
+        }
+    }
+
     public function logout(Request $request)
     {
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect('/');
+        return redirect()->route('login');
     }
 }

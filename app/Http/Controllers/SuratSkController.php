@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\SuratSk;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class SuratSkController extends Controller
 {
@@ -21,18 +22,16 @@ class SuratSkController extends Controller
                                 ->count();
 
         // Ambil daftar tahun arsip distinct dari database + 5 tahun ke belakang
-        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
-        $yearSql = $isSqlite ? "strftime('%Y', tanggal_sk)" : "YEAR(tanggal_sk)";
-        $dbYears = SuratSk::selectRaw("{$yearSql} as yr")
+        $driver = DB::connection()->getDriverName();
+        $yearExpr = $driver === 'sqlite' ? "strftime('%Y', tanggal_sk)" : 'YEAR(tanggal_sk)';
+        $dbYears = SuratSk::selectRaw("{$yearExpr} as yr")
             ->whereNotNull('tanggal_sk')
             ->distinct()
             ->orderByDesc('yr')
             ->pluck('yr')
-            ->map(fn($y) => (int)$y)
-            ->filter()
             ->toArray();
 
-        $defaultYears = range((int)date('Y'), (int)date('Y') - 5);
+        $defaultYears = range(date('Y'), date('Y') - 5);
         $availableYears = array_values(array_unique(array_merge($dbYears, $defaultYears)));
         rsort($availableYears);
 
@@ -127,6 +126,11 @@ class SuratSkController extends Controller
             'tanggal_sk' => 'required|date',
             'tentang'    => 'required|string',
             'keterangan' => 'nullable|string|max:500',
+            'link_google_drive' => [
+                'nullable',
+                'url',
+                'regex:/^(https?:\/\/)?([\w-]+\.)*drive\.google\.com\/.+$/i'
+            ],
             'file_sk'    => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
         ];
 
@@ -135,12 +139,14 @@ class SuratSkController extends Controller
         }
 
         $messages = [
-            'nomor_manual.required' => 'Nomor Surat SK manual wajib diisi jika memilih mode manual.',
-            'nomor_manual.unique'   => 'Nomor Surat SK ini sudah terdaftar di database. Silakan gunakan nomor lain.',
-            'tanggal_sk.required'   => 'Tanggal SK wajib diisi.',
-            'tentang.required'      => 'Hal / Tentang SK wajib diisi.',
-            'file_sk.mimes'         => 'File SK harus berformat PDF, Word (DOC/DOCX), atau Gambar (JPG/PNG).',
-            'file_sk.max'           => 'Ukuran file SK maksimal 10 MB.',
+            'nomor_manual.required'   => 'Nomor Surat SK manual wajib diisi jika memilih mode manual.',
+            'nomor_manual.unique'     => 'Nomor Surat SK ini sudah terdaftar di database. Silakan gunakan nomor lain.',
+            'tanggal_sk.required'     => 'Tanggal SK wajib diisi.',
+            'tentang.required'        => 'Hal / Tentang SK wajib diisi.',
+            'link_google_drive.url'   => 'Link Google Drive harus berupa format URL yang valid (diawali https:// atau http://).',
+            'link_google_drive.regex' => 'Link harus berupa tautan Google Drive yang valid (contoh: https://drive.google.com/...).',
+            'file_sk.mimes'           => 'File SK harus berformat PDF, Word (DOC/DOCX), atau Gambar (JPG/PNG).',
+            'file_sk.max'             => 'Ukuran file SK maksimal 10 MB.',
         ];
 
         $validated = $request->validate($rules, $messages);
@@ -157,12 +163,13 @@ class SuratSkController extends Controller
         }
 
         $sk = SuratSk::create([
-            'nomor_sk'   => $nomorSk,
-            'tanggal_sk' => $validated['tanggal_sk'],
-            'tentang'    => $validated['tentang'],
-            'keterangan' => $validated['keterangan'] ?? null,
-            'file_sk'    => $filePath,
-            'created_by' => Auth::id(),
+            'nomor_sk'          => $nomorSk,
+            'tanggal_sk'        => $validated['tanggal_sk'],
+            'tentang'           => $validated['tentang'],
+            'keterangan'        => $validated['keterangan'] ?? null,
+            'link_google_drive' => $validated['link_google_drive'] ?? null,
+            'file_sk'           => $filePath,
+            'created_by'        => Auth::id(),
         ]);
 
         return redirect()->route('surat.sk')->with('success', 'Surat Keputusan (SK) nomor ' . $sk->nomor_sk . ' berhasil diterbitkan dan diarsipkan.');
@@ -177,13 +184,14 @@ class SuratSkController extends Controller
 
         if (request()->wantsJson() || request()->ajax()) {
             return response()->json([
-                'id'             => $sk->id,
-                'nomor_sk'       => $sk->nomor_sk,
-                'tanggal_sk'     => $sk->tanggal_sk->format('Y-m-d'),
+                'id'                => $sk->id,
+                'nomor_sk'          => $sk->nomor_sk,
+                'tanggal_sk'        => $sk->tanggal_sk->format('Y-m-d'),
                 'tanggal_formatted' => \Carbon\Carbon::parse($sk->tanggal_sk)->translatedFormat('d F Y'),
-                'tentang'        => $sk->tentang,
-                'keterangan'     => $sk->keterangan ?? '-',
-                'file_url'       => $sk->file_sk ? Storage::disk('public')->url($sk->file_sk) : null,
+                'tentang'           => $sk->tentang,
+                'keterangan'        => $sk->keterangan ?? '-',
+                'link_google_drive' => $sk->link_google_drive,
+                'file_url'          => $sk->file_sk ? Storage::disk('public')->url($sk->file_sk) : null,
             ]);
         }
 
