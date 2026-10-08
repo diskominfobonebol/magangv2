@@ -85,35 +85,35 @@
 
         <!-- Action Buttons -->
         <div class="flex items-center gap-2">
+            @if(auth()->check() && auth()->user()->role_id == 2)
             <a href="{{ route('surat.edit', $surat->id) }}" class="btn-pill-secondary px-4 py-2 text-xs font-bold flex items-center gap-1.5">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                 Edit
             </a>
 
-            @if(auth()->check() && (auth()->user()->role_id == 1 || auth()->user()->role_id == 2))
-                @php
-                    $hasChildren = $surat->children && $surat->children->count() > 0;
-                    $childCount = $hasChildren ? $surat->children->count() : 0;
-                    $childNomors = $hasChildren ? implode(', ', $surat->children->pluck('nomor_surat')->filter()->values()->all()) : '';
-                @endphp
-                @if($hasChildren)
-                <button type="button" 
-                        onclick="alert('Dokumen SPT {{ $surat->nomor_surat }} tidak dapat dihapus karena masih memiliki {{ $childCount }} SPPD terkait ({{ $childNomors }}). Silakan hapus atau hubungkan ulang SPPD tersebut terlebih dahulu.')" 
-                        class="btn-pill-secondary px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 shadow-sm cursor-pointer" 
-                        title="SPT memiliki {{ $childCount }} SPPD terkait (tidak dapat dihapus)">
+            @php
+                $hasChildren = $surat->children && $surat->children->count() > 0;
+                $childCount = $hasChildren ? $surat->children->count() : 0;
+                $childNomors = $hasChildren ? implode(', ', $surat->children->pluck('nomor_surat')->filter()->values()->all()) : '';
+            @endphp
+            @if($hasChildren)
+            <button type="button" 
+                    onclick="alert('Dokumen SPT {{ $surat->nomor_surat }} tidak dapat dihapus karena masih memiliki {{ $childCount }} SPPD terkait ({{ $childNomors }}). Silakan hapus atau hubungkan ulang SPPD tersebut terlebih dahulu.')" 
+                    class="btn-pill-secondary px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 shadow-sm cursor-pointer" 
+                    title="SPT memiliki {{ $childCount }} SPPD terkait (tidak dapat dihapus)">
+                <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Hapus
+            </button>
+            @else
+            <form action="{{ route('surat.destroy', $surat->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus surat {{ $surat->nomor_surat }}? Tindakan ini tidak dapat dibatalkan.');" class="inline">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn-pill-secondary px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 shadow-sm cursor-pointer">
                     <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     Hapus
                 </button>
-                @else
-                <form action="{{ route('surat.destroy', $surat->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus surat {{ $surat->nomor_surat }}? Tindakan ini tidak dapat dibatalkan.');" class="inline">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn-pill-secondary px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 shadow-sm cursor-pointer">
-                        <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        Hapus
-                    </button>
-                </form>
-                @endif
+            </form>
+            @endif
             @endif
         </div>
     </div>
@@ -214,10 +214,12 @@
                             <p class="text-xs text-amber-700 mt-0.5">Dokumen SPPD legacy ini dibuat sebelum relasi wajib diterapkan sehingga belum terhubung ke SPT induk.</p>
                         </div>
                     </div>
+                    @if(auth()->user()->role_id == 2)
                     <a href="{{ route('surat.edit', $surat->id) }}" class="btn-pill-primary px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 w-fit whitespace-nowrap">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
                         Hubungkan ke SPT
                     </a>
+                    @endif
                 </div>
                 @endif
 
@@ -337,85 +339,49 @@
                 </div>
             </div>
 
-            <!-- Card Berkas Scan Fisik & Google Drive -->
+            <!-- Card Berkas Scan Fisik & Google Drive (Pola Konsisten Surat Masuk) -->
             <div class="bg-card-gradient rounded-3xl p-6 shadow-xl shadow-blue-900/5 border border-blue-200/50 space-y-4">
                 <div class="flex items-center justify-between">
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Berkas Fisik (Scan)</h4>
-                    @if(!empty($surat->google_drive_url))
+                    @if(!empty($surat->link_google_drive) || !empty($surat->google_drive_url))
                         <span class="badge-green px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                             Google Drive
                         </span>
-                    @elseif(!empty($surat->file_path) && $surat->drive_upload_status === 'failed')
-                        <span class="bg-rose-100 text-rose-800 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                            Gagal Sync Drive
-                        </span>
                     @else
                         <span class="bg-slate-100 text-slate-500 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                            Belum Ada File
+                            Belum Ada Tautan
                         </span>
                     @endif
                 </div>
 
                 <div class="space-y-3">
-                    @if(!empty($surat->google_drive_url) || !empty($surat->file_path))
-                        <div class="bg-white/80 border border-blue-100 rounded-2xl p-4 shadow-sm space-y-3">
-                            <div class="flex items-start gap-3">
-                                <span class="w-9 h-9 rounded-xl bg-blue-50 text-primary flex items-center justify-center font-bold text-base flex-shrink-0">
-                                    📄
-                                </span>
-                                <div class="flex-1 min-w-0">
-                                    <h5 class="text-xs font-bold text-navy truncate" title="{{ $surat->file_name ?? $surat->nomor_surat }}">
-                                        {{ $surat->file_name ?? ($surat->nomor_surat . '.pdf') }}
-                                    </h5>
-                                    <p class="text-[11px] text-slate-400 mt-0.5">
-                                        Status: 
-                                        @if($surat->drive_upload_status === 'success')
-                                            <span class="text-emerald-600 font-semibold">Tersinkronisasi ke Google Drive</span>
-                                        @elseif($surat->drive_upload_status === 'failed')
-                                            <span class="text-rose-600 font-semibold">Gagal sinkronisasi Drive</span>
-                                        @else
-                                            <span class="text-amber-600 font-semibold">Pending / Tersimpan Lokal</span>
-                                        @endif
-                                    </p>
-                                </div>
+                    @if(!empty($surat->link_google_drive) || !empty($surat->google_drive_url))
+                        @php
+                            $driveUrl = $surat->link_google_drive ?: $surat->google_drive_url;
+                        @endphp
+                        <div class="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="min-w-0 flex-1">
+                                <span class="text-emerald-800 font-bold block mb-0.5 text-xs">Bukti Scan Fisik Surat</span>
+                                <span class="text-slate-500 text-[11px] truncate block max-w-md font-mono" title="{{ $driveUrl }}">{{ $driveUrl }}</span>
                             </div>
-
-                            <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-blue-50">
-                                @if(!empty($surat->google_drive_url))
-                                    <a href="{{ $surat->google_drive_url }}" target="_blank" rel="noopener noreferrer" 
-                                       class="btn-pill-primary px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 shadow-sm">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                                        Lihat di Drive
-                                    </a>
-                                @endif
-
-                                <button type="button" @click="isUploadModalOpen = true" 
-                                        class="btn-pill-secondary px-3 py-1.5 text-xs font-bold flex items-center gap-1">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                                    Ganti File
-                                </button>
-
-                                @if($surat->drive_upload_status === 'failed' && !empty($surat->file_path))
-                                    <form action="{{ route('surat.retryDrive', $surat->id) }}" method="POST" class="inline">
-                                        @csrf
-                                        <button type="submit" class="px-2.5 py-1.5 text-[11px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 transition-colors cursor-pointer">
-                                            Sync Ulang Drive
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
+                            <a href="{{ $driveUrl }}" target="_blank" rel="noopener noreferrer" class="btn-pill-primary !bg-emerald-600 hover:!bg-emerald-700 px-4 py-2 text-xs font-bold gap-1.5 flex items-center shadow-md flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                Buka di Google Drive &rarr;
+                            </a>
                         </div>
                     @else
                         <div class="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/60 text-center space-y-3">
                             <p class="text-xs text-slate-500">
-                                Berkas scan surat fisik yang sudah ditandatangani & dicap belum diunggah.
+                                Tautan berkas scan surat fisik yang sudah ditandatangani & dicap belum ditambahkan.
                             </p>
-                            <button type="button" @click="isUploadModalOpen = true" 
-                                    class="btn-pill-primary px-4 py-2 text-xs font-bold inline-flex items-center gap-1.5 shadow-sm">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                                Upload File Surat
-                            </button>
+                            @if(auth()->user()->role_id == 2)
+                            <a href="{{ route('surat.edit', $surat->id) }}" 
+                               class="btn-pill-secondary px-4 py-2 text-xs font-bold inline-flex items-center gap-1.5 shadow-sm text-primary hover:text-primary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                Tambahkan Link Drive
+                            </a>
+                            @endif
                         </div>
                     @endif
                 </div>
@@ -501,10 +467,12 @@
                             </span>
                         </div>
                         <p class="text-xs text-amber-900 leading-relaxed">Dokumen SPPD legacy ini dibuat sebelum aturan relasi wajib diterapkan, sehingga belum memiliki SPT induk.</p>
+                        @if(auth()->user()->role_id == 2)
                         <a href="{{ route('surat.edit', $surat->id) }}" class="btn-pill-primary w-full text-center py-2 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
                             Hubungkan ke SPT Sekarang
                         </a>
+                        @endif
                     </div>
                     @endif
                 </div>
@@ -520,6 +488,7 @@
                         </span>
                     </div>
 
+                    @if(auth()->user()->role_id == 2)
                     <!-- Tombol + Tambah SPPD -->
                     <button type="button" 
                             @click="isTambahSppdOpen = true" 
@@ -527,6 +496,7 @@
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                         + Tambah SPPD
                     </button>
+                    @endif
                 </div>
 
                 <div class="space-y-3">
@@ -582,12 +552,14 @@
                             <p class="text-xs font-bold text-navy">Belum Ada SPPD Terkait</p>
                             <p class="text-[11px] text-slate-500 mt-0.5">SPT ini belum memiliki surat perjalanan dinas (SPPD).</p>
                         </div>
+                        @if(auth()->user()->role_id == 2)
                         <button type="button" 
                                 @click="isTambahSppdOpen = true" 
                                 class="btn-pill-primary px-3 py-1.5 text-xs font-bold mx-auto flex items-center gap-1 shadow-sm cursor-pointer">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                             + Tambah SPPD Sekarang
                         </button>
+                        @endif
                     </div>
                     @endif
                 </div>

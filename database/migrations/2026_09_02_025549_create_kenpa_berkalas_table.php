@@ -14,10 +14,13 @@ return new class extends Migration
         Schema::create('kenpa_berkalas', function (Blueprint $table) {
             $table->id();
             $table->foreignId('pegawai_id')->constrained('pegawais');
-            $table->enum('jenis', ['kenpa', 'berkala']);
+            $table->string('jenis', 50)->default('Berkala');
             $table->date('tgl_terakhir');
             $table->date('tgl_jatuh_tempo');
-            $table->enum('status', ['berjalan', 'selesai', 'diperbarui']);
+            $table->string('status', 50)->default('Aktif');
+            $table->integer('progres_berkas')->default(0);
+            $table->string('status_acc', 50)->default('Menunggu');
+            $table->text('keterangan')->nullable();
             $table->timestamps();
         });
     }

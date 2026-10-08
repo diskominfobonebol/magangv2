@@ -19,6 +19,7 @@ class SuratTelaah extends Model
         'uraian',
         'tujuan',
         'keterangan',
+        'link_google_drive',
         'created_by',
         'updated_by',
     ];

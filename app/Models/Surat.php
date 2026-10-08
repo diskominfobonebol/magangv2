@@ -22,6 +22,7 @@ class Surat extends Model
         'jenis_penugasan',
         'uraian',
         'keterangan',
+        'link_google_drive',
         'file_path',
         'file_name',
         'google_drive_file_id',

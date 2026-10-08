@@ -32,6 +32,7 @@ class SuratMasukTest extends TestCase
             'password' => Hash::make('password'),
             'role_id' => 1,
             'is_active' => true,
+            'must_change_password' => false,
         ]);
 
         $this->kasubag = User::create([
@@ -41,6 +42,7 @@ class SuratMasukTest extends TestCase
             'password' => Hash::make('password'),
             'role_id' => 2,
             'is_active' => true,
+            'must_change_password' => false,
         ]);
 
         $this->pegawai = User::create([
@@ -50,6 +52,7 @@ class SuratMasukTest extends TestCase
             'password' => Hash::make('password'),
             'role_id' => 3,
             'is_active' => true,
+            'must_change_password' => false,
         ]);
     }
 
@@ -243,7 +246,7 @@ class SuratMasukTest extends TestCase
 
     public function test_surat_keluar_still_accessible()
     {
-        $response = $this->actingAs($this->kasubag)->get('/surat');
+        $response = $this->actingAs($this->kasubag)->get('/surat/keluar');
         $response->assertStatus(200);
         $response->assertSee('Surat Keluar');
         $response->assertSee('Surat Masuk');

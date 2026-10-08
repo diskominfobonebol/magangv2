@@ -16,6 +16,7 @@ class SuratSk extends Model
         'tanggal_sk',
         'tentang',
         'keterangan',
+        'link_google_drive',
         'file_sk',
         'created_by',
         'updated_by',

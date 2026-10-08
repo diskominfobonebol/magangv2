@@ -244,68 +244,41 @@
                     </div>
                 </div>
 
-                <!-- Section Upload Berkas Scan Surat (Google Drive Integration) -->
+                <!-- Section Link Google Drive Bukti Fisik (Pola Konsisten Surat Masuk) -->
                 <div class="border border-blue-200/60 rounded-3xl p-6 bg-white/60 space-y-4">
                     <div class="flex items-start justify-between gap-2">
                         <div>
                             <h3 class="text-sm font-bold text-navy flex items-center gap-2">
-                                <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">📁</span>
-                                Unggah Berkas Scan Fisik (Opsional)
+                                <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">🔗</span>
+                                Link Google Drive Bukti Fisik <span class="text-slate-400 font-normal text-xs lowercase">(opsional)</span>
                             </h3>
                             <p class="text-xs text-slate-500 mt-1">
-                                File scan/foto dokumen surat yang sudah ditandatangani dan dicap basah (PDF / Gambar maks. 10MB).
+                                Tautan ke scan atau foto surat fisik yang telah ditandatangani dan diunggah ke Google Drive.
                             </p>
                         </div>
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                            Bisa Diunggah Nanti
+                            Bisa Diisi Nanti
                         </span>
                     </div>
 
-                    <div class="border-2 border-dashed rounded-2xl p-5 text-center transition-all cursor-pointer relative bg-white/80"
-                         :class="isDragging ? 'border-primary bg-blue-50/60 ring-2 ring-blue-400/30' : 'border-blue-200 hover:border-primary/60'"
-                         @dragover.prevent="isDragging = true"
-                         @dragleave.prevent="isDragging = false"
-                         @drop.prevent="isDragging = false; if ($event.dataTransfer.files.length > 0) { $refs.fileInput.files = $event.dataTransfer.files; const f = $event.dataTransfer.files[0]; selectedFileName = f.name; selectedFileSize = (f.size / 1024 / 1024).toFixed(2) + ' MB'; }">
-                        
-                        <input type="file" 
-                               name="file_surat" 
-                               id="file_surat" 
-                               x-ref="fileInput"
-                               accept=".pdf,.jpg,.jpeg,.png"
-                               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                               @change="if ($event.target.files.length > 0) { const f = $event.target.files[0]; selectedFileName = f.name; selectedFileSize = (f.size / 1024 / 1024).toFixed(2) + ' MB'; } else { selectedFileName = ''; selectedFileSize = ''; }">
-
-                        <div x-show="!selectedFileName" class="space-y-2 pointer-events-none">
-                            <div class="w-10 h-10 mx-auto rounded-full bg-blue-50 text-primary flex items-center justify-center shadow-sm">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <div>
+                        <label for="link_google_drive" class="form-label text-xs">Link Google Drive</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
                             </div>
-                            <div>
-                                <p class="text-xs font-bold text-navy">Klik untuk memilih file atau seret file ke sini</p>
-                                <p class="text-[11px] text-slate-400 mt-0.5">Mendukung format PDF, JPG, JPEG, atau PNG (Maksimal 10 MB)</p>
-                            </div>
+                            <input type="url" 
+                                   id="link_google_drive" 
+                                   name="link_google_drive" 
+                                   value="{{ old('link_google_drive', session('s_link_google_drive', '')) }}" 
+                                   placeholder="https://drive.google.com/file/d/.../view?usp=sharing" 
+                                   class="form-input !pl-10 font-mono text-xs @error('link_google_drive') !border-rose-400 !ring-1 !ring-rose-400 @enderror">
                         </div>
-
-                        <div x-show="selectedFileName" x-cloak class="flex items-center justify-between p-3 bg-blue-50/80 border border-blue-200 rounded-xl pointer-events-auto">
-                            <div class="flex items-center gap-3 text-left">
-                                <span class="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-xs">
-                                    📄
-                                </span>
-                                <div>
-                                    <h5 class="text-xs font-bold text-navy truncate max-w-xs md:max-w-md" x-text="selectedFileName"></h5>
-                                    <p class="text-[10px] text-slate-500 font-semibold" x-text="selectedFileSize"></p>
-                                </div>
-                            </div>
-                            <button type="button" 
-                                    @click="$refs.fileInput.value = ''; selectedFileName = ''; selectedFileSize = '';" 
-                                    class="text-xs font-bold text-rose-600 hover:text-rose-800 p-1.5 rounded-lg hover:bg-rose-50 transition-colors">
-                                Hapus
-                            </button>
-                        </div>
+                        <span class="text-[11px] text-slate-400 mt-1 block">Pastikan link Google Drive sudah diatur agar memiliki akses baca bagi yang berkepentingan.</span>
+                        @error('link_google_drive')
+                            <p class="text-[11px] text-rose-600 font-bold mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
-
-                    <p class="text-[11px] text-slate-400 italic">
-                        * File yang diunggah akan otomatis tersinkronisasi ke Google Drive instansi dan dapat diakses publik melalui tautan viewer yang aman.
-                    </p>
                 </div>
             </div>
 

@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('pegawais', function (Blueprint $table) {
-            $table->string('kategori_pegawai', 20)->default('ASN')->after('jabatan');
+            if (!Schema::hasColumn('pegawais', 'kategori_pegawai')) {
+                $table->string('kategori_pegawai', 20)->default('ASN')->after('jabatan');
+            }
         });
     }
 
@@ -22,7 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('pegawais', function (Blueprint $table) {
-            $table->dropColumn('kategori_pegawai');
+            if (Schema::hasColumn('pegawais', 'kategori_pegawai')) {
+                $table->dropColumn('kategori_pegawai');
+            }
         });
     }
 };

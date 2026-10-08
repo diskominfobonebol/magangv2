@@ -12,10 +12,12 @@
             <h2 class="text-2xl font-bold text-navy">Kenaikan Pangkat & Berkala</h2>
             <p class="text-slate-500 text-sm mt-1">Pantau jadwal dan progres unggah berkas seluruh pegawai</p>
         </div>
+        @if(auth()->user()->role_id == 2)
         <button @click="modalBuka = true" type="button" class="btn-pill-primary px-5 py-2.5 text-sm gap-2 shadow-lg shadow-blue-500/25">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
             Tambah Pegawai
         </button>
+        @endif
     </div>
 
     <!-- Metric Cards -->
@@ -174,6 +176,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex items-center justify-end gap-2">
+                                @if(auth()->user()->role_id == 2)
                                 <!-- Tombol Edit -->
                                 <a href="{{ route('kenaikan-pangkat.edit', $p->id) }}" class="btn-pill-secondary px-3 py-1.5 text-xs font-bold">
                                     Edit
@@ -187,6 +190,7 @@
                                         Hapus
                                     </button>
                                 </form>
+                                @endif
 
                                 <!-- Tombol Detail -->
                                 <a href="{{ route('kenaikan-pangkat.show', $p->id) }}" class="btn-pill-primary px-3 py-1.5 text-xs font-bold gap-1 group">

@@ -15,14 +15,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        if (\App\Models\JenisDokumen::count() == 0) {
-            \App\Models\JenisDokumen::insert([
-                ['kategori' => 'kenpa', 'nama_dokumen' => 'SK Pangkat Terakhir', 'is_wajib' => true, 'created_at' => now(), 'updated_at' => now()],
-                ['kategori' => 'kenpa', 'nama_dokumen' => 'SK Jabatan Terakhir', 'is_wajib' => true, 'created_at' => now(), 'updated_at' => now()],
-                ['kategori' => 'kenpa', 'nama_dokumen' => 'Penilaian Prestasi Kerja (SKP)', 'is_wajib' => true, 'created_at' => now(), 'updated_at' => now()],
-                ['kategori' => 'berkala', 'nama_dokumen' => 'SK Kenaikan Gaji Berkala Terakhir', 'is_wajib' => true, 'created_at' => now(), 'updated_at' => now()],
-                ['kategori' => 'berkala', 'nama_dokumen' => 'SK Pangkat Terakhir', 'is_wajib' => true, 'created_at' => now(), 'updated_at' => now()],
-                ['kategori' => 'berkala', 'nama_dokumen' => 'Penilaian SKP Terakhir', 'is_wajib' => true, 'created_at' => now(), 'updated_at' => now()],
+        // Seed Master Jenis Surat
+        if (\App\Models\JenisSurat::count() === 0) {
+            \App\Models\JenisSurat::insert([
+                ['kode' => '090', 'nama_jenis' => 'SPPD', 'created_at' => now(), 'updated_at' => now()],
+                ['kode' => '555', 'nama_jenis' => 'SPT', 'created_at' => now(), 'updated_at' => now()],
             ]);
         }
 
@@ -31,6 +28,7 @@ class DatabaseSeeder extends Seeder
             SettingSeeder::class,
             UserSeeder::class,
             PegawaiSeeder::class,
+            JenisDokumenSeeder::class,
             SuratSeeder::class,
             AsetSeeder::class,
         ]);

@@ -16,7 +16,7 @@
                 <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 Export Rekapitulasi PDF
             </a>
-            @if(auth()->user()->role_id == 2 || auth()->user()->role_id == 1)
+            @if(auth()->user()->role_id == 2)
             <a href="{{ route('surat.telaah.create') }}" class="btn-pill-primary px-5 py-2.5 text-xs font-bold gap-2 shadow-lg shadow-blue-500/25 flex items-center" title="Buat Surat Telaah Baru">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 + Buat Telaah Baru
@@ -168,6 +168,7 @@
                         <th class="py-3.5 px-3">Tujuan</th>
                         <th class="py-3.5 px-3">Pegawai yang Ditugaskan</th>
                         <th class="py-3.5 px-3">Keterangan</th>
+                        <th class="py-3.5 px-3 text-center">Bukti Fisik</th>
                         <th class="py-3.5 px-3 text-center">Aksi</th>
                     </tr>
                 </thead>
@@ -206,6 +207,7 @@
                             'uraian' => $item->uraian,
                             'tujuan' => $item->tujuan,
                             'keterangan' => $item->keterangan ?? '-',
+                            'link_google_drive' => $item->link_google_drive,
                             'spt_nomor' => $item->spt ? $item->spt->nomor_surat : null,
                             'spt_tgl' => $item->spt ? \Carbon\Carbon::parse($item->spt->tgl_surat)->translatedFormat('d F Y') : null,
                             'sppd_list' => $sppdList,
@@ -273,6 +275,18 @@
                             {{ $item->keterangan ?? '-' }}
                         </td>
                         <td class="py-4 px-3 text-center whitespace-nowrap">
+                            @if($item->link_google_drive)
+                                <a href="{{ $item->link_google_drive }}" target="_blank" rel="noopener noreferrer" 
+                                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white font-bold text-xs border border-emerald-200 shadow-sm transition-all cursor-pointer"
+                                   title="Buka bukti fisik di Google Drive">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                    Lihat Bukti
+                                </a>
+                            @else
+                                <span class="text-slate-400 font-normal text-xs">-</span>
+                            @endif
+                        </td>
+                        <td class="py-4 px-3 text-center whitespace-nowrap">
                             <div class="flex items-center justify-center gap-1.5">
                                 <!-- Tombol Lihat -->
                                 <button type="button" 
@@ -283,11 +297,11 @@
                                     Lihat
                                 </button>
 
-                                <!-- Tombol Hapus -->
-                                @if(auth()->user()->role_id == 2 || auth()->user()->role_id == 1)
+                                <!-- Tombol Hapus (Khusus Kasubag) -->
+                                @if(auth()->user()->role_id == 2)
                                 <button type="button" 
                                         @click="confirmDelete('{{ $item->id }}', '{{ $item->nomor_telaah }}')" 
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white font-bold text-xs border border-rose-200/60 shadow-sm transition-all cursor-pointer"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white font-bold text-xs border border-rose-200/60 shadow-sm transition-all cursor-pointer" 
                                         title="Hapus Surat Telaah">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                     Hapus
@@ -298,7 +312,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="py-12 text-center text-slate-400">
+                        <td colspan="10" class="py-12 text-center text-slate-400">
                             <div class="flex flex-col items-center justify-center space-y-2">
                                 <span class="text-4xl">📂</span>
                                 <p class="text-sm font-semibold">Belum ada arsip Surat Telaah yang cocok dengan filter pencarian.</p>
@@ -414,6 +428,18 @@
                 <div>
                     <span class="text-slate-400 font-bold block mb-1">Keterangan:</span>
                     <p class="text-slate-600" x-text="detailData.keterangan || '-'"></p>
+                </div>
+
+                <!-- Link Google Drive Bukti Fisik -->
+                <div class="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3" x-show="detailData.link_google_drive">
+                    <div>
+                        <span class="text-emerald-800 font-bold block mb-0.5">Bukti Scan Fisik Surat</span>
+                        <span class="text-slate-500 text-[11px] truncate block max-w-xs" x-text="detailData.link_google_drive"></span>
+                    </div>
+                    <a :href="detailData.link_google_drive" target="_blank" rel="noopener noreferrer" class="btn-pill-primary !bg-emerald-600 hover:!bg-emerald-700 px-4 py-2 text-xs font-bold gap-1.5 flex items-center shadow-md flex-shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        Buka di Google Drive &rarr;
+                    </a>
                 </div>
             </div>
 
