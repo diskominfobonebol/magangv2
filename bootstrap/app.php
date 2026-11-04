@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
             'force.password.reset' => \App\Http\Middleware\ForcePasswordReset::class,
+            'two_factor' => \App\Http\Middleware\EnsureTwoFactorEnrolled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

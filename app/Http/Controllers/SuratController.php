@@ -5,9 +5,15 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Surat;
 use App\Models\Pegawai;
+use App\Models\JenisSurat;
+use App\Models\SuratTelaah;
+use App\Models\SuratSk;
+use App\Models\NomorSuratTerpakai;
 use App\Http\Requests\StorePegawaiP3kRequest;
 use App\Services\SppdNumberingService;
 use App\Services\GoogleDriveService;
+use App\Services\NomorSuratService;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -119,78 +125,408 @@ class SuratController extends Controller
         
         $totalBulanIni = Surat::whereMonth('tgl_surat', now()->month)
                             ->whereYear('tgl_surat', now()->year)
+                            ->count()
+                        + SuratTelaah::whereMonth('tanggal_telaah', now()->month)
+                            ->whereYear('tanggal_telaah', now()->year)
+                            ->count()
+                        + SuratSk::whereMonth('tanggal_sk', now()->month)
+                            ->whereYear('tanggal_sk', now()->year)
                             ->count();
 
-        $surats = Surat::with(['jenisSurat', 'pegawais', 'parent', 'children.pegawais'])
-                    ->whereNull('parent_id')
-                    ->when($request->filled('search'), function($query) use ($request) {
-                        $search = $request->search;
-                        return $query->where(function($q) use ($search) {
-                            $q->where('nomor_surat', 'like', "%{$search}%")
-                                ->orWhere('tujuan', 'like', "%{$search}%")
-                                ->orWhere('uraian', 'like', "%{$search}%")
-                                ->orWhere('keterangan', 'like', "%{$search}%")
-                                ->orWhereHas('pegawais', function($pq) use ($search) {
-                                    $pq->where('nama', 'like', "%{$search}%")
-                                       ->orWhere('nip', 'like', "%{$search}%")
-                                       ->orWhere('surat_pegawai.nomor_sppd', 'like', "%{$search}%");
-                                })
-                                ->orWhereHas('children', function($cq) use ($search) {
-                                    $cq->where('nomor_surat', 'like', "%{$search}%")
-                                       ->orWhere('uraian', 'like', "%{$search}%")
-                                       ->orWhere('tujuan', 'like', "%{$search}%")
-                                       ->orWhere('keterangan', 'like', "%{$search}%")
-                                       ->orWhereHas('pegawais', function($cpq) use ($search) {
-                                           $cpq->where('nama', 'like', "%{$search}%")
-                                              ->orWhere('nip', 'like', "%{$search}%")
-                                              ->orWhere('surat_pegawai.nomor_sppd', 'like', "%{$search}%");
-                                       });
-                                });
-                        });
-                    })
-                    ->when($request->filled('filter_jenis') || $request->filled('jenis'), function($query) use ($request) {
-                        $jenis = $request->get('filter_jenis', $request->get('jenis'));
-                        if ($jenis === 'SPT') {
-                            return $query->where(function($q) {
-                                $q->where('jenis_surat_id', 2)
-                                  ->orWhereNull('jenis_surat_id')
-                                  ->orWhere('nomor_surat', 'like', '555/%');
-                            })->whereNotNull('nomor_surat')->where('nomor_surat', '!=', '');
-                        } elseif ($jenis === 'SPPD') {
-                            return $query->where(function($q) {
-                                $q->where(function($sq) {
-                                    $sq->where('has_sppd', 1)
-                                       ->whereHas('pegawais', function($pq) {
-                                           $pq->whereNotNull('surat_pegawai.nomor_sppd')
-                                              ->where('surat_pegawai.nomor_sppd', '!=', '');
-                                       });
-                                })->orWhereHas('children', function($cq) {
-                                    $cq->whereHas('pegawais', function($cpq) {
-                                        $cpq->whereNotNull('surat_pegawai.nomor_sppd')
-                                           ->where('surat_pegawai.nomor_sppd', '!=', '');
-                                    });
-                                });
-                            });
-                        }
-                    })
-                    ->when($request->filled('year'), function($query) use ($request) {
-                        return $query->whereYear('tgl_surat', $request->year);
-                    })
-                    ->when(!$request->filled('year') && $request->filled('start_date') && $request->filled('end_date'), function($query) use ($request) {
-                        return $query->whereBetween('tgl_surat', [$request->start_date, $request->end_date]);
-                    })
-                    ->orderByRekap()
-                    ->paginate(5)
-                    ->withQueryString();
+        $unifiedCollection = $this->getUnifiedSuratKeluar($request);
 
-        $allPegawais = \App\Models\Pegawai::whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai', 'Pegawai Biasa', 'Bendahara Barang'])->orderByHierarki()->get();
+        $perPage = 10;
+        $page = LengthAwarePaginator::resolveCurrentPage() ?: 1;
+        $currentPageItems = $unifiedCollection->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $surats = new LengthAwarePaginator(
+            $currentPageItems,
+            $unifiedCollection->count(),
+            $perPage,
+            $page,
+            [
+                'path' => LengthAwarePaginator::resolveCurrentPath(),
+                'query' => $request->query()
+            ]
+        );
+
+        $jenisSurats = JenisSurat::all();
+        $allPegawais = \App\Models\Pegawai::whereNotIn('id', [1, 2, 3])->orderByHierarki()->get();
         $nextSppdCounter = $this->getNextSppdCounter();
 
         // Ambil daftar SPT aktif beserta metadata penomoran SPPD
         $sptList = SppdNumberingService::getSptMetadataList();
         $seriesSummary = SppdNumberingService::getSeriesSummaryForFrontend();
 
-        return view('surat.index', compact('surats', 'totalSpt', 'totalSppd', 'totalBulanIni', 'allPegawais', 'nextSppdCounter', 'sptList', 'seriesSummary'));
+        return view('surat.index', compact('surats', 'totalSpt', 'totalSppd', 'totalBulanIni', 'allPegawais', 'nextSppdCounter', 'sptList', 'seriesSummary', 'jenisSurats'));
+    }
+
+    /**
+     * Helper untuk menyusun baris stdClass dengan set properti seragam untuk semua kategori (Tugas 1 & 4).
+     */
+    protected function formatUnifiedItem(array $data): object
+    {
+        $defaults = [
+            'id' => null,
+            'source_type' => 'spt',
+            'kategori' => 'SPT',
+            'kategori_badge' => 'SPT',
+            'kategori_color' => 'bg-blue-100 text-primary border border-blue-200',
+            'jenis_surat_id' => null,
+            'nomor_surat' => '-',
+            'tgl_surat' => null,
+            'perihal' => null,
+            'uraian' => null,
+            'tujuan' => '-',
+            'pegawais' => collect([]),
+            'children' => collect([]),
+            'has_sppd' => 0,
+            'direct_sppds' => [],
+            'child_sppds' => [],
+            'parent' => null,
+            'parent_id' => null,
+            'spt_induk_manual' => null,
+            'keterangan' => null,
+            'status' => 'Terbit',
+            'link_google_drive' => null,
+            'google_drive_url' => null,
+            'file_name' => null,
+            'file_path' => null,
+            'google_drive_file_id' => null,
+            'drive_upload_status' => 'none',
+            'show_route' => null,
+            'edit_route' => null,
+            'delete_route' => null,
+            'model' => null,
+        ];
+
+        return (object) array_merge($defaults, $data);
+    }
+
+    /**
+     * Menyatukan seluruh data Surat Keluar (SPT, SPPD, Surat Telaah, Surat SK, Lainnya)
+     * ke dalam satu koleksi standar untuk tabel dan ekspor rekap PDF (Tugas 1 & Tugas 4).
+     */
+    public function getUnifiedSuratKeluar(Request $request): \Illuminate\Support\Collection
+    {
+        $search = trim($request->get('search', ''));
+        $filterJenis = trim($request->get('filter_jenis', $request->get('jenis', '')));
+        $year = $request->get('year');
+        $month = $request->get('month');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+
+        $lainnyaId = JenisSurat::where('nama', 'Lainnya')->orWhere('nama_jenis', 'Lainnya')->value('id');
+
+        $includeSurats = empty($filterJenis) || in_array($filterJenis, ['SPT', 'SPPD', 'Lainnya']);
+        $includeTelaah = empty($filterJenis) || $filterJenis === 'Surat Telaah';
+        $includeSk = empty($filterJenis) || $filterJenis === 'Surat SK';
+
+        $unified = collect();
+
+        // 1. Ambil dari tabel surats
+        if ($includeSurats) {
+            $suratQuery = Surat::with(['jenisSurat', 'pegawais', 'parent', 'children.pegawais'])
+                ->whereNull('parent_id')
+                ->when($search, function($query) use ($search) {
+                    $query->where(function($q) use ($search) {
+                        $q->where('nomor_surat', 'like', "%{$search}%")
+                            ->orWhere('tujuan', 'like', "%{$search}%")
+                            ->orWhere('uraian', 'like', "%{$search}%")
+                            ->orWhere('keterangan', 'like', "%{$search}%")
+                            ->orWhereHas('pegawais', function($pq) use ($search) {
+                                $pq->where('nama', 'like', "%{$search}%")
+                                   ->orWhere('nip', 'like', "%{$search}%")
+                                   ->orWhere('surat_pegawai.nomor_sppd', 'like', "%{$search}%");
+                            })
+                            ->orWhereHas('children', function($cq) use ($search) {
+                                $cq->where('nomor_surat', 'like', "%{$search}%")
+                                   ->orWhere('uraian', 'like', "%{$search}%")
+                                   ->orWhere('tujuan', 'like', "%{$search}%")
+                                   ->orWhere('keterangan', 'like', "%{$search}%")
+                                   ->orWhereHas('pegawais', function($cpq) use ($search) {
+                                       $cpq->where('nama', 'like', "%{$search}%")
+                                          ->orWhere('nip', 'like', "%{$search}%")
+                                          ->orWhere('surat_pegawai.nomor_sppd', 'like', "%{$search}%");
+                                   });
+                            });
+                    });
+                })
+                ->when($filterJenis, function($query) use ($filterJenis, $lainnyaId) {
+                    if ($filterJenis === 'SPT') {
+                        $query->where(function($q) use ($lainnyaId) {
+                            $q->where('jenis_surat_id', 2)
+                              ->orWhereNull('jenis_surat_id')
+                              ->orWhere('nomor_surat', 'like', '555/%');
+                        })->where('jenis_surat_id', '!=', $lainnyaId ?? -1)
+                          ->whereNotNull('nomor_surat')->where('nomor_surat', '!=', '');
+                    } elseif ($filterJenis === 'SPPD') {
+                        $query->where(function($q) {
+                            $q->where(function($sq) {
+                                $sq->where('has_sppd', 1)
+                                   ->whereHas('pegawais', function($pq) {
+                                       $pq->whereNotNull('surat_pegawai.nomor_sppd')
+                                          ->where('surat_pegawai.nomor_sppd', '!=', '');
+                                   });
+                            })->orWhereHas('children', function($cq) {
+                                $cq->whereHas('pegawais', function($cpq) {
+                                    $cpq->whereNotNull('surat_pegawai.nomor_sppd')
+                                       ->where('surat_pegawai.nomor_sppd', '!=', '');
+                                });
+                            })->orWhere('jenis_surat_id', 1)
+                              ->orWhere('nomor_surat', 'like', '090/%');
+                        });
+                    } elseif ($filterJenis === 'Lainnya') {
+                        $query->where('jenis_surat_id', $lainnyaId);
+                    }
+                })
+                ->when($year, function($query) use ($year) {
+                    $query->whereYear('tgl_surat', $year);
+                })
+                ->when($month, function($query) use ($month) {
+                    $query->whereMonth('tgl_surat', $month);
+                })
+                ->when($startDate && $endDate, function($query) use ($startDate, $endDate) {
+                    $query->whereBetween('tgl_surat', [$startDate, $endDate]);
+                })
+                ->when($startDate && !$endDate, function($query) use ($startDate) {
+                    $query->whereDate('tgl_surat', '>=', $startDate);
+                })
+                ->when(!$startDate && $endDate, function($query) use ($endDate) {
+                    $query->whereDate('tgl_surat', '<=', $endDate);
+                });
+
+            foreach ($suratQuery->get() as $s) {
+                $isSppd = ($s->jenis_surat_id == 1 || str_starts_with($s->nomor_surat, '090/'));
+                $isLainnya = ($lainnyaId && $s->jenis_surat_id == $lainnyaId);
+                $kat = $isLainnya ? 'Lainnya' : ($isSppd ? 'SPPD' : 'SPT');
+
+                $directSppds = [];
+                if ($s->has_sppd && $s->pegawais) {
+                    foreach ($s->pegawais as $p) {
+                        if (!empty($p->pivot->nomor_sppd) && $p->pivot->nomor_sppd !== '-') {
+                            $directSppds[] = [
+                                'nomor' => $p->pivot->nomor_sppd,
+                                'nama' => $p->nama,
+                                'url' => route('surat.show', $s->id),
+                                'is_child' => false,
+                            ];
+                        }
+                    }
+                }
+
+                $childSppds = [];
+                if ($s->children && $s->children->count() > 0) {
+                    foreach ($s->children as $child) {
+                        if ($child->pegawais && $child->pegawais->count() > 0) {
+                            foreach ($child->pegawais as $cp) {
+                                $cNomor = $cp->pivot->nomor_sppd ?: $child->nomor_surat;
+                                if (!empty($cNomor) && $cNomor !== '-') {
+                                    $childSppds[] = [
+                                        'nomor' => $cNomor,
+                                        'nama' => $cp->nama,
+                                        'url' => route('surat.show', $child->id),
+                                        'is_child' => true,
+                                    ];
+                                }
+                            }
+                        } else {
+                            $childSppds[] = [
+                                'nomor' => $child->nomor_surat,
+                                'nama' => '-',
+                                'url' => route('surat.show', $child->id),
+                                'is_child' => true,
+                            ];
+                        }
+                    }
+                }
+
+                $sourceType = $isLainnya ? 'lainnya' : ($isSppd ? 'sppd' : 'spt');
+                $kategoriBadge = $kat;
+                $kategoriColor = $isLainnya 
+                    ? 'bg-purple-100 text-purple-800 border border-purple-200' 
+                    : ($isSppd ? 'bg-pink-100 text-pink-800 border border-pink-200' : 'bg-blue-100 text-primary border border-blue-200');
+
+                // Kolom Google Drive di surats: link_google_drive & google_drive_url
+                $driveUrl = $s->google_drive_url ?: $s->link_google_drive;
+
+                $unified->push($this->formatUnifiedItem([
+                    'id' => $s->id,
+                    'source_type' => $sourceType,
+                    'kategori' => $kat,
+                    'kategori_badge' => $kategoriBadge,
+                    'kategori_color' => $kategoriColor,
+                    'jenis_surat_id' => $s->jenis_surat_id,
+                    'nomor_surat' => $s->nomor_surat,
+                    'tgl_surat' => $s->tgl_surat,
+                    'perihal' => $s->perihal,
+                    'uraian' => $s->uraian ?: $s->perihal,
+                    'tujuan' => $s->tujuan,
+                    'pegawais' => $s->pegawais,
+                    'children' => $s->children,
+                    'has_sppd' => $s->has_sppd,
+                    'direct_sppds' => $directSppds,
+                    'child_sppds' => $childSppds,
+                    'parent' => $s->parent,
+                    'parent_id' => $s->parent_id,
+                    'spt_induk_manual' => $s->spt_induk_manual,
+                    'keterangan' => $s->keterangan,
+                    'status' => $s->status ?? 'Terbit',
+                    'link_google_drive' => $s->link_google_drive,
+                    'google_drive_url' => $driveUrl,
+                    'file_name' => $s->file_name,
+                    'file_path' => $s->file_path,
+                    'google_drive_file_id' => $s->google_drive_file_id,
+                    'drive_upload_status' => $s->drive_upload_status ?? 'none',
+                    'show_route' => route('surat.show', $s->id),
+                    'edit_route' => route('surat.edit', $s->id),
+                    'delete_route' => route('surat.destroy', $s->id),
+                    'model' => $s,
+                ]));
+            }
+        }
+
+        // 2. Ambil dari tabel surat_telaahs
+        if ($includeTelaah) {
+            $telaahQuery = SuratTelaah::with(['pegawais', 'spt'])
+                ->when($search, function($query) use ($search) {
+                    $query->where(function($q) use ($search) {
+                        $q->where('nomor_telaah', 'like', "%{$search}%")
+                            ->orWhere('uraian', 'like', "%{$search}%")
+                            ->orWhere('tujuan', 'like', "%{$search}%")
+                            ->orWhere('keterangan', 'like', "%{$search}%")
+                            ->orWhereHas('pegawais', function($pq) use ($search) {
+                                $pq->where('nama', 'like', "%{$search}%")
+                                   ->orWhere('nip', 'like', "%{$search}%");
+                            });
+                    });
+                })
+                ->when($year, function($query) use ($year) {
+                    $query->whereYear('tanggal_telaah', $year);
+                })
+                ->when($month, function($query) use ($month) {
+                    $query->whereMonth('tanggal_telaah', $month);
+                })
+                ->when($startDate && $endDate, function($query) use ($startDate, $endDate) {
+                    $query->whereBetween('tanggal_telaah', [$startDate, $endDate]);
+                })
+                ->when($startDate && !$endDate, function($query) use ($startDate) {
+                    $query->whereDate('tanggal_telaah', '>=', $startDate);
+                })
+                ->when(!$startDate && $endDate, function($query) use ($endDate) {
+                    $query->whereDate('tanggal_telaah', '<=', $endDate);
+                });
+
+            foreach ($telaahQuery->get() as $st) {
+                // Kolom Google Drive di surat_telaahs: link_google_drive
+                $driveUrl = $st->link_google_drive;
+
+                $unified->push($this->formatUnifiedItem([
+                    'id' => $st->id,
+                    'source_type' => 'telaah',
+                    'kategori' => 'Surat Telaah',
+                    'kategori_badge' => 'Surat Telaah',
+                    'kategori_color' => 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+                    'jenis_surat_id' => null,
+                    'nomor_surat' => $st->nomor_telaah,
+                    'tgl_surat' => $st->tanggal_telaah ? $st->tanggal_telaah->format('Y-m-d') : null,
+                    'perihal' => null,
+                    'uraian' => $st->uraian,
+                    'tujuan' => $st->tujuan,
+                    'pegawais' => $st->pegawais,
+                    'children' => collect([]),
+                    'has_sppd' => 0,
+                    'direct_sppds' => [],
+                    'child_sppds' => [],
+                    'parent' => $st->spt,
+                    'parent_id' => $st->spt_id,
+                    'spt_induk_manual' => null,
+                    'keterangan' => $st->keterangan,
+                    'status' => 'Terbit',
+                    'link_google_drive' => $st->link_google_drive,
+                    'google_drive_url' => $driveUrl,
+                    'file_name' => null,
+                    'file_path' => null,
+                    'google_drive_file_id' => null,
+                    'drive_upload_status' => 'none',
+                    'show_route' => route('surat.telaah.show', $st->id),
+                    'edit_route' => route('surat.telaah.edit', $st->id),
+                    'delete_route' => route('surat.telaah.destroy', $st->id),
+                    'model' => $st,
+                ]));
+            }
+        }
+
+        // 3. Ambil dari tabel surat_sks
+        if ($includeSk) {
+            $skQuery = SuratSk::query()
+                ->when($search, function($query) use ($search) {
+                    $query->where(function($q) use ($search) {
+                        $q->where('nomor_sk', 'like', "%{$search}%")
+                            ->orWhere('tentang', 'like', "%{$search}%")
+                            ->orWhere('keterangan', 'like', "%{$search}%");
+                    });
+                })
+                ->when($year, function($query) use ($year) {
+                    $query->whereYear('tanggal_sk', $year);
+                })
+                ->when($month, function($query) use ($month) {
+                    $query->whereMonth('tanggal_sk', $month);
+                })
+                ->when($startDate && $endDate, function($query) use ($startDate, $endDate) {
+                    $query->whereBetween('tanggal_sk', [$startDate, $endDate]);
+                })
+                ->when($startDate && !$endDate, function($query) use ($startDate) {
+                    $query->whereDate('tanggal_sk', '>=', $startDate);
+                })
+                ->when(!$startDate && $endDate, function($query) use ($endDate) {
+                    $query->whereDate('tanggal_sk', '<=', $endDate);
+                });
+
+            foreach ($skQuery->get() as $sk) {
+                // Kolom Google Drive di surat_sks: link_google_drive
+                $driveUrl = $sk->link_google_drive;
+
+                $unified->push($this->formatUnifiedItem([
+                    'id' => $sk->id,
+                    'source_type' => 'sk',
+                    'kategori' => 'Surat SK',
+                    'kategori_badge' => 'Surat SK',
+                    'kategori_color' => 'bg-violet-100 text-violet-800 border border-violet-200',
+                    'jenis_surat_id' => null,
+                    'nomor_surat' => $sk->nomor_sk,
+                    'tgl_surat' => $sk->tanggal_sk ? $sk->tanggal_sk->format('Y-m-d') : null,
+                    'perihal' => null,
+                    'uraian' => $sk->tentang,
+                    'tujuan' => '-',
+                    'pegawais' => collect([]),
+                    'children' => collect([]),
+                    'has_sppd' => 0,
+                    'direct_sppds' => [],
+                    'child_sppds' => [],
+                    'parent' => null,
+                    'parent_id' => null,
+                    'spt_induk_manual' => null,
+                    'keterangan' => $sk->keterangan,
+                    'status' => 'Terbit',
+                    'link_google_drive' => $sk->link_google_drive,
+                    'google_drive_url' => $driveUrl,
+                    'file_name' => $sk->file_sk,
+                    'file_path' => $sk->file_sk ? ('storage/' . $sk->file_sk) : null,
+                    'google_drive_file_id' => null,
+                    'drive_upload_status' => 'none',
+                    'show_route' => route('surat.sk.show', $sk->id),
+                    'edit_route' => route('surat.sk.edit', $sk->id),
+                    'delete_route' => route('surat.sk.destroy', $sk->id),
+                    'model' => $sk,
+                ]));
+            }
+        }
+
+        // Urutkan berdasarkan tanggal surat descending, kemudian id descending
+        return $unified->sortByDesc(function($item) {
+            return ($item->tgl_surat ?? '1970-01-01') . sprintf('%08d', $item->id);
+        })->values();
     }
 
     public function getNextSppdCounterApi()
@@ -213,6 +549,129 @@ class SuratController extends Controller
         $eval = SppdNumberingService::checkBackdate($series, $tanggal, $jenisPenugasan, [], $excludeId);
 
         return response()->json($eval);
+    }
+
+    /**
+     * Endpoint API cek backdate untuk kategori dinamis (SPT, SPPD, Surat Telaah, Surat SK, Lainnya) (Tugas 2.2).
+     */
+    public function checkBackdateKategoriApi(Request $request)
+    {
+        $kategori = $request->get('kategori', 'SPT');
+        $tglSurat = $request->get('tgl_surat', date('Y-m-d'));
+        $excludeId = $request->filled('exclude_id') ? (int)$request->get('exclude_id') : null;
+
+        $result = NomorSuratService::isBackdate($kategori, $tglSurat, $excludeId);
+
+        $year = (int)date('Y', strtotime($tglSurat));
+        $nextSeq = NomorSuratService::getNextSequenceNumber($kategori, $year, $excludeId);
+        $padded = str_pad($nextSeq, ($kategori === 'Surat Telaah' || $kategori === 'Surat SK' ? 2 : 3), '0', STR_PAD_LEFT);
+        $result['next_seq'] = $padded;
+        $result['preview_nomor'] = NomorSuratService::formatCandidateNomor($kategori, $nextSeq, $tglSurat);
+
+        return response()->json($result);
+    }
+
+    /**
+     * Endpoint API cek duplikat nomor surat lintas seluruh kategori surat keluar (Tugas 3).
+     */
+    public function checkNomorDuplikatApi(Request $request)
+    {
+        $nomor = $request->get('nomor');
+        $excludeTable = $request->get('exclude_table');
+        $excludeId = $request->filled('exclude_id') ? (int)$request->get('exclude_id') : null;
+
+        $duplicate = NomorSuratService::checkDuplicate($nomor, $excludeTable, $excludeId);
+
+        if ($duplicate) {
+            $namaKat = $duplicate['kategori'];
+            $tgl = $duplicate['tgl_surat'] ? date('d/m/Y', strtotime($duplicate['tgl_surat'])) : '-';
+            return response()->json([
+                'is_duplicate' => true,
+                'message' => "Nomor surat ini sudah terdaftar pada {$namaKat} tanggal {$tgl}.",
+                'existing' => $duplicate,
+            ]);
+        }
+
+        return response()->json([
+            'is_duplicate' => false,
+            'message' => 'Nomor surat tersedia.',
+        ]);
+    }
+
+    /**
+     * Halaman form pembuatan Surat Keluar kategori 'Lainnya' (Tugas 1 poin 5).
+     */
+    public function createLainnya(Request $request)
+    {
+        $jenisSurat = JenisSurat::where('nama', 'Lainnya')->orWhere('nama_jenis', 'Lainnya')->first();
+        $kodeTersedia = $jenisSurat && !empty($jenisSurat->kode);
+
+        return view('surat.create-lainnya', compact('jenisSurat', 'kodeTersedia'));
+    }
+
+    /**
+     * Simpan Surat Keluar kategori 'Lainnya' (Tugas 1 poin 5).
+     */
+    public function storeLainnya(Request $request, GoogleDriveService $driveService)
+    {
+        $request->validate([
+            'nomor_surat' => 'required|string|max:150',
+            'tgl_surat' => 'required|date',
+            'uraian' => 'required|string',
+            'keterangan' => 'nullable|string|max:150',
+            'link_google_drive' => [
+                'nullable',
+                'url',
+                'regex:/^(https?:\/\/)?([\w-]+\.)*drive\.google\.com\/.+$/i'
+            ],
+        ], [
+            'nomor_surat.required' => 'Nomor Surat wajib diisi.',
+            'nomor_surat.max' => 'Nomor Surat maksimal 150 karakter.',
+            'tgl_surat.required' => 'Tanggal Surat wajib diisi.',
+            'uraian.required' => 'Uraian / Isi Ringkas Surat wajib diisi.',
+            'keterangan.max' => 'Keterangan tambahan maksimal 150 karakter.',
+            'link_google_drive.regex' => 'Link harus berupa tautan Google Drive yang valid.',
+        ]);
+
+        $nomor = trim($request->nomor_surat);
+
+        // Cek duplikat lintas kategori
+        $duplicate = NomorSuratService::checkDuplicate($nomor);
+        if ($duplicate) {
+            return back()->withInput()->withErrors([
+                'nomor_surat' => "Nomor surat '{$nomor}' sudah digunakan pada {$duplicate['kategori']} tanggal " . ($duplicate['tgl_surat'] ? date('d/m/Y', strtotime($duplicate['tgl_surat'])) : '-') . "."
+            ]);
+        }
+
+        $lainnyaJenis = JenisSurat::where('nama', 'Lainnya')->orWhere('nama_jenis', 'Lainnya')->first();
+        $jenisSuratId = $lainnyaJenis ? $lainnyaJenis->id : null;
+
+        $surat = DB::transaction(function() use ($request, $nomor, $jenisSuratId) {
+            $surat = Surat::create([
+                'jenis_surat_id' => $jenisSuratId,
+                'nomor_surat' => $nomor,
+                'tgl_surat' => $request->tgl_surat,
+                'uraian' => $request->uraian,
+                'tujuan' => '-',
+                'keterangan' => $request->keterangan,
+                'link_google_drive' => $request->link_google_drive,
+                'has_sppd' => 0,
+                'status' => 'Terbit',
+                'created_by' => auth()->id() ?? 1,
+            ]);
+
+            NomorSuratService::registerNomor(
+                $nomor,
+                'Lainnya',
+                'surats',
+                $surat->id,
+                $surat->tgl_surat
+            );
+
+            return $surat;
+        });
+
+        return redirect()->route('surat.index')->with('success', "Surat Keluar Lainnya ({$nomor}) berhasil diterbitkan!");
     }
 
     public function create(Request $request)
@@ -259,8 +718,11 @@ class SuratController extends Controller
             }
         }
 
-        // Saring pegawai agar akun Admin Master, Admin Kasubag, dan Pegawai Biasa (ID 1, 2, 3) tidak ikut terpanggil
-        $pegawais = \App\Models\Pegawai::whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai', 'Pegawai Biasa', 'Bendahara Barang'])->orderByHierarki()->get();
+        // Saring pegawai agar akun Admin Master, Admin Kasubag, dan Pegawai Biasa tidak ikut terpanggil
+        $pegawais = \App\Models\Pegawai::whereNotIn('id', [1, 2, 3])
+            ->whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai', 'Bendahara Barang', 'Pegawai Biasa'])
+            ->orderByHierarki()
+            ->get();
 
         return view('surat.create-step-2', compact('pegawais'));
     }
@@ -316,6 +778,186 @@ class SuratController extends Controller
         return view('surat.create-step-3', compact('selectedPegawais', 'sppdPreviews', 'sppdEval', 'jenisSuratId', 'bln', 'thn', 'seriesSummary'));
     }
 
+    /**
+     * SPPD Standalone Wizard - Langkah 1: Informasi Nomor Surat (Tugas A)
+     */
+    public function createSppd(Request $request)
+    {
+        // Bersihkan session jika bukan dari tombol kembali
+        if (!$request->hasHeader('referer') || !str_contains(url()->previous(), 'sppd/create/step-2')) {
+            session()->forget([
+                's_sppd_tgl_surat', 's_sppd_parent_id', 's_sppd_spt_induk_manual',
+                's_sppd_mode_nomor', 's_sppd_nomor_surat', 's_sppd_tujuan',
+                's_sppd_uraian', 's_sppd_keterangan', 's_sppd_pegawai_id'
+            ]);
+        }
+
+        $jenisSurat = JenisSurat::find(1); // SPPD (kode 090, default otomatis)
+        $spts = Surat::where(function($q) {
+            $q->where('jenis_surat_id', 2)
+              ->orWhereNull('jenis_surat_id')
+              ->orWhere('nomor_surat', 'like', '555/%');
+        })
+        ->whereNotNull('nomor_surat')
+        ->where('nomor_surat', '!=', '')
+        ->where('status', '!=', 'Draft')
+        ->with(['pegawais', 'children.pegawais'])
+        ->orderByDesc('tgl_surat')
+        ->orderByDesc('id')
+        ->get();
+
+        $tglSurat = session('s_sppd_tgl_surat', null);
+        $eval = $tglSurat ? SppdNumberingService::checkBackdate('SPPD', $tglSurat) : ['is_backdate' => false, 'notice' => ''];
+        $nextSeq = NomorSuratService::getNextSequenceNumber('SPPD', (int)date('Y'));
+        $nomorUrutSppd = str_pad($nextSeq, 3, '0', STR_PAD_LEFT);
+        $seriesSummary = SppdNumberingService::getSeriesSummaryForFrontend();
+
+        return view('surat.sppd.create', compact('jenisSurat', 'spts', 'eval', 'nomorUrutSppd', 'seriesSummary'));
+    }
+
+    /**
+     * SPPD Standalone Wizard - Langkah 2: Personel & Uraian (Tugas A)
+     */
+    public function createSppdStep2(Request $request)
+    {
+        if ($request->isMethod('post')) {
+            $request->validate([
+                'tgl_surat' => 'required|date',
+                'parent_id' => 'required_without:spt_induk_manual|nullable|exists:surats,id',
+                'spt_induk_manual' => 'required_without:parent_id|nullable|string|max:255',
+            ], [
+                'tgl_surat.required' => 'Tanggal SPPD wajib diisi.',
+                'parent_id.required_without' => 'SPT Induk wajib dipilih dari database atau diketik nomornya secara manual.',
+                'spt_induk_manual.required_without' => 'SPT Induk wajib dipilih dari database atau diketik nomornya secara manual.',
+            ]);
+
+            $modeNomor = $request->input('mode_nomor', 'otomatis');
+            $prevParentId = session('s_sppd_parent_id');
+            if ($request->parent_id && $request->parent_id != $prevParentId) {
+                session()->forget('s_sppd_pegawai_id');
+            }
+
+            session([
+                's_sppd_tgl_surat' => $request->tgl_surat,
+                's_sppd_parent_id' => $request->parent_id,
+                's_sppd_spt_induk_manual' => $request->spt_induk_manual,
+                's_sppd_mode_nomor' => $modeNomor,
+                's_sppd_nomor_surat' => ($modeNomor === 'manual') ? ($request->nomor_surat_manual ?? $request->nomor_surat) : null,
+                's_sppd_tujuan' => $request->tujuan,
+                's_sppd_uraian' => $request->uraian,
+            ]);
+        } else {
+            if (!session('s_sppd_tgl_surat')) {
+                return redirect()->route('surat.sppd.create')->with('error', 'Silakan tentukan informasi nomor SPPD terlebih dahulu.');
+            }
+        }
+
+        $pegawais = Pegawai::whereNotIn('id', [1, 2, 3])->orderByHierarki()->get();
+        $parentSpt = session('s_sppd_parent_id') ? Surat::with('pegawais')->find(session('s_sppd_parent_id')) : null;
+        if ($parentSpt && $parentSpt->pegawais) {
+            $pegawais = $pegawais->merge($parentSpt->pegawais)->unique('id')->values();
+        }
+
+        return view('surat.sppd.create-step-2', compact('pegawais', 'parentSpt'));
+    }
+
+    /**
+     * SPPD Standalone Wizard - Langkah 3: Nomor SPPD per Pegawai (Tugas A)
+     */
+    public function createSppdStep3(Request $request)
+    {
+        if ($request->isMethod('post')) {
+            $request->validate([
+                'pegawai_id' => 'required|array|min:1',
+                'tujuan' => 'required|string',
+                'uraian' => 'required|string',
+                'keterangan' => 'nullable|string|max:150',
+            ], [
+                'pegawai_id.required' => 'Pilih minimal 1 personil yang ditugaskan.',
+                'pegawai_id.min' => 'Pilih minimal 1 personil yang ditugaskan.',
+                'tujuan.required' => 'Tujuan perjalanan dinas wajib diisi.',
+                'uraian.required' => 'Maksud / Uraian perjalanan dinas wajib diisi.',
+                'keterangan.max' => 'Keterangan tambahan maksimal 150 karakter.',
+            ]);
+
+            session([
+                's_sppd_tujuan' => $request->tujuan,
+                's_sppd_uraian' => $request->uraian,
+                's_sppd_keterangan' => $request->keterangan,
+                's_sppd_pegawai_id' => $request->pegawai_id,
+            ]);
+        }
+
+        $pegawaiIds = session('s_sppd_pegawai_id', []);
+        if (empty($pegawaiIds)) {
+            return redirect()->route('surat.sppd.create.step2')->with('error', 'Pilih minimal 1 personil yang ditugaskan.');
+        }
+
+        $selectedPegawais = Pegawai::whereIn('id', $pegawaiIds)->orderByHierarki()->get();
+        $tglSurat = session('s_sppd_tgl_surat', date('Y-m-d'));
+        $tujuan = session('s_sppd_tujuan', '-');
+        $jenisPenugasan = $this->determineJenisPenugasan($tujuan);
+        $parentId = session('s_sppd_parent_id');
+        $sptIndukManual = session('s_sppd_spt_induk_manual');
+        $parentSpt = $parentId ? Surat::find($parentId) : null;
+        $parentSptNomor = $parentSpt ? $parentSpt->nomor_surat : $sptIndukManual;
+
+        $sppdPreviews = [];
+        $batch = [];
+        foreach ($selectedPegawais as $pegawai) {
+            $sppdPreviews[$pegawai->id] = SppdNumberingService::generateNextSppdNumber($parentSptNomor, $parentId, $tglSurat, null, $batch, $jenisPenugasan);
+        }
+
+        $eval = SppdNumberingService::checkBackdate('SPPD', $tglSurat, $jenisPenugasan);
+        $seriesSummary = SppdNumberingService::getSeriesSummaryForFrontend();
+
+        return view('surat.sppd.create-step-3', compact('selectedPegawais', 'sppdPreviews', 'eval', 'seriesSummary', 'parentSpt', 'parentSptNomor'));
+    }
+
+    /**
+     * Simpan Draft dari Wizard SPPD
+     */
+    public function storeSppdDraft(Request $request)
+    {
+        $request->merge([
+            'jenis_surat_id' => 1,
+            'has_sppd' => 1,
+            'tgl_surat' => $request->input('tgl_surat', session('s_sppd_tgl_surat')),
+            'parent_id' => $request->input('parent_id', session('s_sppd_parent_id')),
+            'spt_induk_manual' => $request->input('spt_induk_manual', session('s_sppd_spt_induk_manual')),
+            'mode_nomor' => $request->input('mode_nomor', session('s_sppd_mode_nomor', 'otomatis')),
+            'nomor_surat_manual' => $request->input('nomor_surat_manual', session('s_sppd_nomor_surat')),
+            'tujuan' => $request->input('tujuan', session('s_sppd_tujuan', '-')),
+            'uraian' => $request->input('uraian', session('s_sppd_uraian', 'Perjalanan Dinas')),
+            'keterangan' => $request->input('keterangan', session('s_sppd_keterangan')),
+            'pegawai_id' => $request->input('pegawai_id', session('s_sppd_pegawai_id', [])),
+        ]);
+
+        return $this->storeDraft($request);
+    }
+
+    /**
+     * Terbitkan SPPD dari Wizard SPPD
+     */
+    public function storeSppd(Request $request, GoogleDriveService $driveService)
+    {
+        $request->merge([
+            'jenis_surat_id' => 1,
+            'has_sppd' => 1,
+            'tgl_surat' => $request->input('tgl_surat', session('s_sppd_tgl_surat')),
+            'parent_id' => $request->input('parent_id', session('s_sppd_parent_id')),
+            'spt_induk_manual' => $request->input('spt_induk_manual', session('s_sppd_spt_induk_manual')),
+            'mode_nomor' => $request->input('mode_nomor', session('s_sppd_mode_nomor', 'otomatis')),
+            'nomor_surat_manual' => $request->input('nomor_surat_manual', session('s_sppd_nomor_surat')),
+            'tujuan' => $request->input('tujuan', session('s_sppd_tujuan', '-')),
+            'uraian' => $request->input('uraian', session('s_sppd_uraian', 'Perjalanan Dinas')),
+            'keterangan' => $request->input('keterangan', session('s_sppd_keterangan')),
+            'pegawai_id' => $request->input('pegawai_id', session('s_sppd_pegawai_id', [])),
+        ]);
+
+        return $this->store($request, $driveService);
+    }
+
     public function show($id)
     {
         $surat = Surat::with(['jenisSurat', 'pegawais', 'parent', 'children.pegawais'])->find($id);
@@ -323,7 +965,7 @@ class SuratController extends Controller
             return redirect()->route('surat.index')->with('error', 'Data surat tidak ditemukan, mungkin sudah dihapus sebelumnya.');
         }
 
-        $allPegawais = \App\Models\Pegawai::whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai', 'Pegawai Biasa', 'Bendahara Barang'])->orderByHierarki()->get();
+        $allPegawais = \App\Models\Pegawai::whereNotIn('id', [1, 2, 3])->orderByHierarki()->get();
         $sptUrut = SppdNumberingService::extractSptSequence($surat->nomor_surat);
         $nextSppdCounter = SppdNumberingService::getNextSppdSequence();
         $seriesSummary = SppdNumberingService::getSeriesSummaryForFrontend();
@@ -338,7 +980,7 @@ class SuratController extends Controller
         if (!$surat) {
             return redirect()->route('surat.index')->with('error', 'Data surat tidak ditemukan, mungkin sudah dihapus sebelumnya.');
         }
-        $pegawais = \App\Models\Pegawai::whereNotIn('nama', ['Admin Master', 'Admin Kasubag', 'Pegawai', 'Pegawai Biasa', 'Bendahara Barang'])->orderByHierarki()->get();
+        $pegawais = \App\Models\Pegawai::whereNotIn('id', [1, 2, 3])->orderByHierarki()->get();
         
         // Ambil daftar SPT dari database untuk opsi pilihan SPT Induk jika surat berjenis SPPD
         $sptList = Surat::where(function($q) {
@@ -546,9 +1188,12 @@ class SuratController extends Controller
             return $surat;
         });
 
-        if ($request->hasFile('file_surat')) {
+        if ($request->hasFile('file_surat') && $updatedSurat->jenis_surat_id == 2) {
             $this->handleSuratFileUpload($request, $updatedSurat, $driveService);
         }
+
+        $suratType = ($updatedSurat->jenis_surat_id == 1) ? 'sppd' : 'spt';
+        \App\Services\NotificationService::notifyPenugasanSurat($updatedSurat, array_keys($syncData ?? []), $suratType);
 
         return redirect()->route('surat.index')->with('success', 'Perubahan data surat berhasil disimpan!');
     }
@@ -656,7 +1301,6 @@ class SuratController extends Controller
                 'url',
                 'regex:/^(https?:\/\/)?([\w-]+\.)*drive\.google\.com\/.+$/i'
             ],
-            'file_surat' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ], [
             'tgl_surat.required' => 'Tanggal SPPD wajib diisi.',
             'pegawai_id.required' => 'Minimal harus memilih satu personel yang ditugaskan.',
@@ -664,8 +1308,6 @@ class SuratController extends Controller
             'keterangan.max' => 'Keterangan tambahan maksimal 150 karakter.',
             'link_google_drive.url' => 'Link Google Drive harus berupa format URL yang valid (diawali https:// atau http://).',
             'link_google_drive.regex' => 'Link harus berupa tautan Google Drive yang valid (contoh: https://drive.google.com/...).',
-            'file_surat.mimes' => 'Format file surat harus berupa PDF, JPG, JPEG, atau PNG.',
-            'file_surat.max' => 'Ukuran file surat maksimal 10 MB.',
         ]);
 
         $parentSpt = Surat::findOrFail($id);
@@ -728,6 +1370,30 @@ class SuratController extends Controller
             }
             $childSurat->pegawais()->sync($attachData);
 
+            NomorSuratService::registerNomor(
+                $childSurat->nomor_surat,
+                'SPPD',
+                'surats',
+                $childSurat->id,
+                $childSurat->tgl_surat
+            );
+
+            $pivotRows = DB::table('surat_pegawai')
+                ->where('surat_id', $childSurat->id)
+                ->whereNotNull('nomor_sppd')
+                ->where('nomor_sppd', '!=', '')
+                ->where('nomor_sppd', '!=', '-')
+                ->get();
+            foreach ($pivotRows as $pRow) {
+                NomorSuratService::registerNomor(
+                    $pRow->nomor_sppd,
+                    'SPPD',
+                    'surat_pegawai',
+                    $pRow->id,
+                    $childSurat->tgl_surat
+                );
+            }
+
             // Pastikan SPT induk ter-flag has_sppd = 1
             if (!$parentSpt->has_sppd) {
                 $parentSpt->has_sppd = 1;
@@ -737,9 +1403,7 @@ class SuratController extends Controller
             return $childSurat;
         });
 
-        if ($request->hasFile('file_surat')) {
-            $this->handleSuratFileUpload($request, $childSurat, $driveService);
-        }
+        \App\Services\NotificationService::notifyPenugasanSurat($childSurat, $pegawaiIds, 'sppd');
 
         return redirect()->route('surat.show', $parentSpt->id)->with('success', 'SPPD baru (' . $childSurat->nomor_surat . ') berhasil ditambahkan ke SPT ini!');
     }
@@ -757,7 +1421,6 @@ class SuratController extends Controller
                 'url',
                 'regex:/^(https?:\/\/)?([\w-]+\.)*drive\.google\.com\/.+$/i'
             ],
-            'file_surat' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ], [
             'parent_id.required_without' => 'SPT Induk wajib dipilih dari database atau diketik nomornya secara manual.',
             'spt_induk_manual.required_without' => 'SPT Induk wajib dipilih dari database atau diketik nomornya secara manual.',
@@ -767,8 +1430,6 @@ class SuratController extends Controller
             'keterangan.max' => 'Keterangan tambahan maksimal 150 karakter.',
             'link_google_drive.url' => 'Link Google Drive harus berupa format URL yang valid (diawali https:// atau http://).',
             'link_google_drive.regex' => 'Link harus berupa tautan Google Drive yang valid (contoh: https://drive.google.com/...).',
-            'file_surat.mimes' => 'Format file surat harus berupa PDF, JPG, JPEG, atau PNG.',
-            'file_surat.max' => 'Ukuran file surat maksimal 10 MB.',
         ]);
 
         $parentId = $request->filled('parent_id') ? $request->parent_id : null;
@@ -833,6 +1494,30 @@ class SuratController extends Controller
             }
             $childSurat->pegawais()->sync($attachData);
 
+            NomorSuratService::registerNomor(
+                $childSurat->nomor_surat,
+                'SPPD',
+                'surats',
+                $childSurat->id,
+                $childSurat->tgl_surat
+            );
+
+            $pivotRows = DB::table('surat_pegawai')
+                ->where('surat_id', $childSurat->id)
+                ->whereNotNull('nomor_sppd')
+                ->where('nomor_sppd', '!=', '')
+                ->where('nomor_sppd', '!=', '-')
+                ->get();
+            foreach ($pivotRows as $pRow) {
+                NomorSuratService::registerNomor(
+                    $pRow->nomor_sppd,
+                    'SPPD',
+                    'surat_pegawai',
+                    $pRow->id,
+                    $childSurat->tgl_surat
+                );
+            }
+
             if ($parentSpt && !$parentSpt->has_sppd) {
                 $parentSpt->has_sppd = 1;
                 $parentSpt->save();
@@ -841,9 +1526,7 @@ class SuratController extends Controller
             return $childSurat;
         });
 
-        if ($request->hasFile('file_surat')) {
-            $this->handleSuratFileUpload($request, $childSurat, $driveService);
-        }
+        \App\Services\NotificationService::notifyPenugasanSurat($childSurat, $pegawaiIds, 'sppd');
 
         return redirect()->route('surat.index')->with('success', 'Surat Perintah Perjalanan Dinas (SPPD) ' . $childSurat->nomor_surat . ' berhasil diterbitkan!');
     }
@@ -860,15 +1543,18 @@ class SuratController extends Controller
                 'regex:/^(https?:\/\/)?([\w-]+\.)*drive\.google\.com\/.+$/i'
             ],
             'tgl_surat' => 'nullable|date',
-            'file_surat' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ];
         $messages = [
             'keterangan.max' => 'Keterangan tambahan maksimal 150 karakter.',
             'link_google_drive.url' => 'Link Google Drive harus berupa format URL yang valid (diawali https:// atau http://).',
             'link_google_drive.regex' => 'Link harus berupa tautan Google Drive yang valid (contoh: https://drive.google.com/...).',
-            'file_surat.mimes' => 'Format file surat harus berupa PDF, JPG, JPEG, atau PNG.',
-            'file_surat.max' => 'Ukuran file surat maksimal 10 MB.',
         ];
+
+        if ($jenisSuratId !== 1) {
+            $rules['file_surat'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $messages['file_surat.mimes'] = 'Format file surat harus berupa PDF, JPG, JPEG, atau PNG.';
+            $messages['file_surat.max'] = 'Ukuran file surat maksimal 10 MB.';
+        }
 
         if ($jenisSuratId === 1) {
             $rules['parent_id'] = 'required_without:spt_induk_manual|nullable|exists:surats,id';
@@ -909,6 +1595,25 @@ class SuratController extends Controller
         $manualNumber = ($modeNomor === 'manual') ? ($request->input('nomor_surat_manual') ?? $request->input('nomor_surat') ?? session('s_nomor_surat')) : null;
         $jenisPenugasan = $this->determineJenisPenugasan($tujuan);
 
+        // Validasi Backdate & Pencegahan Bypass Mode Otomatis (Tugas 2.1 & 2.2)
+        $kategoriName = ($jenisSuratId === 1) ? 'SPPD' : 'SPT';
+        $backdateCheck = NomorSuratService::isBackdate($kategoriName, $tglSurat);
+        if ($backdateCheck['is_backdate'] && $modeNomor === 'otomatis') {
+            return back()->withInput()->withErrors([
+                'mode_nomor' => 'Tanggal surat sebelum hari ini (backdate). Penomoran otomatis dinonaktifkan, nomor surat wajib diisi secara manual.'
+            ]);
+        }
+
+        // Validasi Duplikat untuk Nomor Manual (Tugas 3)
+        if ($manualNumber) {
+            $duplicate = NomorSuratService::checkDuplicate($manualNumber);
+            if ($duplicate) {
+                return back()->withInput()->withErrors([
+                    'nomor_surat_manual' => "Nomor surat '{$manualNumber}' sudah digunakan pada {$duplicate['kategori']} tanggal " . ($duplicate['tgl_surat'] ? date('d/m/Y', strtotime($duplicate['tgl_surat'])) : '-') . "."
+                ]);
+            }
+        }
+
         $surat = DB::transaction(function () use ($request, $jenisSuratId, $tglSurat, $tujuan, $uraian, $keterangan, $linkGoogleDrive, $pegawaiIds, $buatSppd, $parentId, $sptIndukManual, $manualNumber, $modeNomor, $jenisPenugasan) {
             $usedSppdBatch = [];
 
@@ -937,6 +1642,14 @@ class SuratController extends Controller
                 'status' => 'Terbit',
                 'created_by' => auth()->id() ?? 1,
             ]);
+
+            NomorSuratService::registerNomor(
+                $surat->nomor_surat,
+                $jenisSuratId === 1 ? 'SPPD' : 'SPT',
+                'surats',
+                $surat->id,
+                $surat->tgl_surat
+            );
 
             if (!empty($pegawaiIds)) {
                 $attachData = [];
@@ -978,16 +1691,38 @@ class SuratController extends Controller
                     ];
                 }
                 $surat->pegawais()->sync($attachData);
+
+                $pivotRows = DB::table('surat_pegawai')
+                    ->where('surat_id', $surat->id)
+                    ->whereNotNull('nomor_sppd')
+                    ->where('nomor_sppd', '!=', '')
+                    ->where('nomor_sppd', '!=', '-')
+                    ->get();
+                foreach ($pivotRows as $pRow) {
+                    NomorSuratService::registerNomor(
+                        $pRow->nomor_sppd,
+                        'SPPD',
+                        'surat_pegawai',
+                        $pRow->id,
+                        $surat->tgl_surat
+                    );
+                }
             }
 
             return $surat;
         });
 
-        if ($request->hasFile('file_surat')) {
+        if ($request->hasFile('file_surat') && $surat->jenis_surat_id !== 1) {
             $this->handleSuratFileUpload($request, $surat, $driveService);
         }
 
-        session()->forget(['s_tgl_surat', 's_tujuan', 's_jenis_surat_id', 's_mode_nomor', 's_nomor_surat', 's_uraian', 's_keterangan', 's_link_google_drive', 's_pegawai_id', 's_buat_sppd', 's_parent_id', 's_spt_induk_manual']);
+        session()->forget([
+            's_tgl_surat', 's_tujuan', 's_jenis_surat_id', 's_mode_nomor', 's_nomor_surat', 's_uraian', 's_keterangan', 's_link_google_drive', 's_pegawai_id', 's_buat_sppd', 's_parent_id', 's_spt_induk_manual',
+            's_sppd_tgl_surat', 's_sppd_parent_id', 's_sppd_spt_induk_manual', 's_sppd_mode_nomor', 's_sppd_nomor_surat', 's_sppd_tujuan', 's_sppd_uraian', 's_sppd_keterangan', 's_sppd_pegawai_id'
+        ]);
+
+        $suratType = ($surat->jenis_surat_id == 1) ? 'sppd' : 'spt';
+        \App\Services\NotificationService::notifyPenugasanSurat($surat, $pegawaiIds, $suratType);
 
         return redirect()->route('surat.index')->with('success', 'Surat berhasil diterbitkan!');
     }
@@ -1040,6 +1775,25 @@ class SuratController extends Controller
             $manualNumber = ($modeNomor === 'manual') ? ($request->input('nomor_surat_manual') ?? $request->input('nomor_surat') ?? session('s_nomor_surat')) : null;
             $jenisPenugasan = $this->determineJenisPenugasan($tujuan);
 
+            // Validasi Backdate & Pencegahan Bypass Mode Otomatis
+            $kategoriName = ($jenisSuratId == 1) ? 'SPPD' : 'SPT';
+            $backdateCheck = NomorSuratService::isBackdate($kategoriName, $tglSurat);
+            if ($backdateCheck['is_backdate'] && $modeNomor === 'otomatis') {
+                return back()->withInput()->withErrors([
+                    'mode_nomor' => 'Tanggal surat sebelum hari ini (backdate). Penomoran otomatis dinonaktifkan, nomor surat wajib diisi secara manual.'
+                ]);
+            }
+
+            // Validasi duplikat pada nomor manual jika draft menggunakan nomor manual
+            if ($manualNumber) {
+                $duplicate = NomorSuratService::checkDuplicate($manualNumber);
+                if ($duplicate) {
+                    return back()->withInput()->withErrors([
+                        'nomor_surat_manual' => "Nomor surat '{$manualNumber}' sudah digunakan pada {$duplicate['kategori']} tanggal " . ($duplicate['tgl_surat'] ? date('d/m/Y', strtotime($duplicate['tgl_surat'])) : '-') . "."
+                    ]);
+                }
+            }
+
             return DB::transaction(function () use ($request, $jenisSuratId, $tglSurat, $tujuan, $uraian, $keterangan, $linkGoogleDrive, $pegawaiIds, $parentId, $sptIndukManual, $manualNumber, $modeNomor, $jenisPenugasan) {
                 $usedSppdBatch = [];
 
@@ -1068,6 +1822,14 @@ class SuratController extends Controller
                     'status' => 'Draft',
                     'created_by' => auth()->id() ?? 1,
                 ]);
+
+                NomorSuratService::registerNomor(
+                    $surat->nomor_surat,
+                    $jenisSuratId === 1 ? 'SPPD' : 'SPT',
+                    'surats',
+                    $surat->id,
+                    $surat->tgl_surat
+                );
 
                 if (!empty($pegawaiIds)) {
                     $filteredPegawaiIds = array_values(array_unique(array_filter($pegawaiIds)));
@@ -1101,9 +1863,28 @@ class SuratController extends Controller
                         ];
                     }
                     $surat->pegawais()->sync($attachData);
+
+                    $pivotRows = DB::table('surat_pegawai')
+                        ->where('surat_id', $surat->id)
+                        ->whereNotNull('nomor_sppd')
+                        ->where('nomor_sppd', '!=', '')
+                        ->where('nomor_sppd', '!=', '-')
+                        ->get();
+                    foreach ($pivotRows as $pRow) {
+                        NomorSuratService::registerNomor(
+                            $pRow->nomor_sppd,
+                            'SPPD',
+                            'surat_pegawai',
+                            $pRow->id,
+                            $surat->tgl_surat
+                        );
+                    }
                 }
 
-                session()->forget(['s_tgl_surat', 's_tujuan', 's_jenis_surat_id', 's_mode_nomor', 's_nomor_surat', 's_uraian', 's_keterangan', 's_pegawai_id', 's_buat_sppd', 's_parent_id', 's_spt_induk_manual']);
+                session()->forget([
+                    's_tgl_surat', 's_tujuan', 's_jenis_surat_id', 's_mode_nomor', 's_nomor_surat', 's_uraian', 's_keterangan', 's_pegawai_id', 's_buat_sppd', 's_parent_id', 's_spt_induk_manual',
+                    's_sppd_tgl_surat', 's_sppd_parent_id', 's_sppd_spt_induk_manual', 's_sppd_mode_nomor', 's_sppd_nomor_surat', 's_sppd_tujuan', 's_sppd_uraian', 's_sppd_keterangan', 's_sppd_pegawai_id'
+                ]);
 
                 return redirect()->route('surat.index')->with('success', 'Draft surat berhasil disimpan!');
             });
@@ -1149,6 +1930,23 @@ class SuratController extends Controller
             return redirect()->route('surat.index')->with('error', $errorMessage);
         }
 
+        // Lepaskan nomor surat dan nomor SPPD pegawai dari registri nomor_surat_terpakai (Tugas 3)
+        NomorSuratService::releaseNomor('surats', $surat->id);
+        $pivotIds = DB::table('surat_pegawai')->where('surat_id', $surat->id)->pluck('id');
+        foreach ($pivotIds as $pId) {
+            NomorSuratService::releaseNomor('surat_pegawai', $pId);
+        }
+
+        foreach ($surat->children as $child) {
+            NomorSuratService::releaseNomor('surats', $child->id);
+            $childPivotIds = DB::table('surat_pegawai')->where('surat_id', $child->id)->pluck('id');
+            foreach ($childPivotIds as $cpId) {
+                NomorSuratService::releaseNomor('surat_pegawai', $cpId);
+            }
+            $child->pegawais()->detach();
+            $child->delete();
+        }
+
         $surat->pegawais()->detach();
         $surat->delete();
 
@@ -1169,115 +1967,45 @@ class SuratController extends Controller
 
     public function exportRekapPdf(Request $request)
     {
-        $query = Surat::with(['jenisSurat', 'pegawais', 'parent', 'children.pegawais'])
-                    ->whereNull('parent_id')
-                    ->when($request->filled('search'), function($query) use ($request) {
-                        $search = $request->search;
-                        return $query->where(function($q) use ($search) {
-                            $q->where('nomor_surat', 'like', "%{$search}%")
-                                ->orWhere('tujuan', 'like', "%{$search}%")
-                                ->orWhere('uraian', 'like', "%{$search}%")
-                                ->orWhere('keterangan', 'like', "%{$search}%")
-                                ->orWhereHas('pegawais', function($pq) use ($search) {
-                                    $pq->where('nama', 'like', "%{$search}%")
-                                       ->orWhere('nip', 'like', "%{$search}%")
-                                       ->orWhere('surat_pegawai.nomor_sppd', 'like', "%{$search}%");
-                                })
-                                ->orWhereHas('children', function($cq) use ($search) {
-                                    $cq->where('nomor_surat', 'like', "%{$search}%")
-                                       ->orWhere('uraian', 'like', "%{$search}%")
-                                       ->orWhere('tujuan', 'like', "%{$search}%")
-                                       ->orWhere('keterangan', 'like', "%{$search}%")
-                                       ->orWhereHas('pegawais', function($cpq) use ($search) {
-                                           $cpq->where('nama', 'like', "%{$search}%")
-                                              ->orWhere('nip', 'like', "%{$search}%")
-                                              ->orWhere('surat_pegawai.nomor_sppd', 'like', "%{$search}%");
-                                       });
-                                });
-                        });
-                    })
-                    ->when($request->filled('filter_jenis') || $request->filled('jenis'), function($q) use ($request) {
-                        $jenis = $request->get('filter_jenis', $request->get('jenis'));
-                        if ($jenis === 'SPT') {
-                            return $q->where(function($sq) {
-                                $sq->where('jenis_surat_id', 2)
-                                  ->orWhereNull('jenis_surat_id')
-                                  ->orWhere('nomor_surat', 'like', '555/%');
-                            })->whereNotNull('nomor_surat')->where('nomor_surat', '!=', '');
-                        } elseif ($jenis === 'SPPD') {
-                            return $q->where(function($sqq) {
-                                $sqq->where(function($sq) {
-                                    $sq->where('has_sppd', 1)
-                                       ->whereHas('pegawais', function($pq) {
-                                           $pq->whereNotNull('surat_pegawai.nomor_sppd')
-                                              ->where('surat_pegawai.nomor_sppd', '!=', '');
-                                       });
-                                })->orWhereHas('children', function($cq) {
-                                    $cq->whereHas('pegawais', function($cpq) {
-                                        $cpq->whereNotNull('surat_pegawai.nomor_sppd')
-                                           ->where('surat_pegawai.nomor_sppd', '!=', '');
-                                    });
-                                });
-                            });
-                        }
-                    })
-                    ->when($request->filled('year'), function($q) use ($request) {
-                        return $q->whereYear('tgl_surat', $request->year);
-                    })
-                    ->when(!$request->filled('year') && $request->filled('start_date') && $request->filled('end_date'), function($q) use ($request) {
-                        return $q->whereBetween('tgl_surat', [$request->start_date, $request->end_date]);
-                    })
-                    ->when(!$request->filled('year') && $request->filled('start_date') && !$request->filled('end_date'), function($q) use ($request) {
-                        return $q->whereDate('tgl_surat', '>=', $request->start_date);
-                    })
-                    ->when(!$request->filled('year') && !$request->filled('start_date') && $request->filled('end_date'), function($q) use ($request) {
-                        return $q->whereDate('tgl_surat', '<=', $request->end_date);
-                    })
-                    ->orderByRekap();
-
-        $surats = $query->get();
+        $surats = $this->getUnifiedSuratKeluar($request);
 
         // Judul Periode Dinamis
-        $periodeText = 'Rekapitulasi Surat Keseluruhan';
-        if ($request->filled('year')) {
-            $periodeText = 'Rekapitulasi Surat — Tahun ' . $request->year;
+        $periodeText = 'Rekapitulasi Surat Keluar Keseluruhan';
+        if ($request->filled('month') && $request->filled('year')) {
+            $monthName = \Carbon\Carbon::createFromDate($request->year, $request->month, 1)->translatedFormat('F');
+            $periodeText = "Rekapitulasi Surat Keluar — Bulan {$monthName} {$request->year}";
+        } elseif ($request->filled('year')) {
+            $periodeText = 'Rekapitulasi Surat Keluar — Tahun ' . $request->year;
+        } elseif ($request->filled('month')) {
+            $monthName = \Carbon\Carbon::createFromDate(date('Y'), $request->month, 1)->translatedFormat('F');
+            $periodeText = "Rekapitulasi Surat Keluar — Bulan {$monthName}";
         } elseif ($request->filled('start_date') && $request->filled('end_date')) {
             $startDateFormatted = \Carbon\Carbon::parse($request->start_date)->translatedFormat('d M Y');
             $endDateFormatted = \Carbon\Carbon::parse($request->end_date)->translatedFormat('d M Y');
-            $periodeText = "Rekapitulasi Surat — {$startDateFormatted} s/d {$endDateFormatted}";
+            $periodeText = "Rekapitulasi Surat Keluar — {$startDateFormatted} s/d {$endDateFormatted}";
         } elseif ($request->filled('start_date')) {
             $startDateFormatted = \Carbon\Carbon::parse($request->start_date)->translatedFormat('d M Y');
-            $periodeText = "Rekapitulasi Surat — Mulai {$startDateFormatted}";
+            $periodeText = "Rekapitulasi Surat Keluar — Mulai {$startDateFormatted}";
         } elseif ($request->filled('end_date')) {
             $endDateFormatted = \Carbon\Carbon::parse($request->end_date)->translatedFormat('d M Y');
-            $periodeText = "Rekapitulasi Surat — Sampai {$endDateFormatted}";
+            $periodeText = "Rekapitulasi Surat Keluar — Sampai {$endDateFormatted}";
         }
 
         // Metrik Ringkasan Rekap
-        $totalSpt = $surats->filter(function($item) {
-            return ($item->jenis_surat_id == 2 || is_null($item->jenis_surat_id) || str_starts_with($item->nomor_surat, '555/')) && !empty($item->nomor_surat);
-        })->count();
+        $totalSpt = $surats->filter(fn($item) => $item->kategori === 'SPT')->count();
 
         $totalSppd = 0;
         foreach ($surats as $item) {
-            if ($item->has_sppd && $item->pegawais) {
-                $totalSppd += $item->pegawais->filter(function($p) {
-                    return !empty($p->pivot->nomor_sppd) && $p->pivot->nomor_sppd !== '-';
-                })->count();
+            if (!empty($item->direct_sppds)) {
+                $totalSppd += count($item->direct_sppds);
             }
-            if ($item->children) {
-                foreach ($item->children as $child) {
-                    if ($child->pegawais) {
-                        $totalSppd += $child->pegawais->filter(function($cp) {
-                            return !empty($cp->pivot->nomor_sppd) && $cp->pivot->nomor_sppd !== '-';
-                        })->count();
-                    }
-                }
+            if (!empty($item->child_sppds)) {
+                $totalSppd += count($item->child_sppds);
             }
         }
 
         $totalBulanIni = $surats->filter(function($item) {
-            return \Carbon\Carbon::parse($item->tgl_surat)->isCurrentMonth() && \Carbon\Carbon::parse($item->tgl_surat)->isCurrentYear();
+            return $item->tgl_surat && \Carbon\Carbon::parse($item->tgl_surat)->isCurrentMonth() && \Carbon\Carbon::parse($item->tgl_surat)->isCurrentYear();
         })->count();
 
         $logoKominfoPath = file_exists(public_path('images/logo-kominfo.png')) 

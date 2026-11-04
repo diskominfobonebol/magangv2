@@ -115,8 +115,8 @@
     <div class="ttd">
         Ditetapkan di Gorontalo<br>
         pada tanggal {{ \Carbon\Carbon::parse($surat->tgl_surat)->translatedFormat('d F Y') }}<br>
-        <div class="nama-ttd">Drs. H. Syamsuddin, M.Si</div>
-        NIP. 196502121990031004
+        <div class="nama-ttd">ICHSAN BUDIMAN WANTOGIA, S.Pi,M.Adm.Pemb</div>
+        NIP. 197204102003121008
     </div>
     <div style="clear: both;"></div>
 

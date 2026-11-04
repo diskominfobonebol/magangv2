@@ -370,11 +370,13 @@ class KenaikanPangkatController extends Controller
             'keterangan_admin' => 'nullable|string'
         ]);
 
-        $dokumen = \App\Models\DokumenPegawai::findOrFail($id);
+        $dokumen = \App\Models\DokumenPegawai::with(['kenpaBerkala.pegawai', 'jenisDokumen'])->findOrFail($id);
         $dokumen->update([
             'status_verifikasi' => $request->status_verifikasi,
             'keterangan_admin' => $request->keterangan_admin,
         ]);
+
+        \App\Services\NotificationService::notifyStatusBerkas($dokumen, $request->status_verifikasi, $request->keterangan_admin);
 
         return redirect()->back()->with('success', 'Status dokumen berhasil diperbarui!');
     }

@@ -65,7 +65,7 @@
         </a>
 
         <!-- 5. Pendaftar Magang -->
-        <a href="{{ route('admin.magang') }}" class="p-5 bg-card-gradient rounded-3xl card-interactive flex items-center gap-3.5 border border-blue-200/50 shadow-sm">
+        <a href="{{ route('admin.users.index', ['role' => 5]) }}" class="p-5 bg-card-gradient rounded-3xl card-interactive flex items-center gap-3.5 border border-blue-200/50 shadow-sm">
             <div class="icon-circle-pink flex-shrink-0">
                 <i class="fa-solid fa-user-graduate text-lg"></i>
             </div>
@@ -97,7 +97,7 @@
                 <i class="fa-solid fa-qrcode text-[#EC4899]"></i>
                 <span class="truncate">Label QR Aset</span>
             </a>
-            <a href="{{ route('admin.magang') }}" class="btn-pill-secondary py-3 px-3 text-xs font-bold gap-1.5 text-center justify-center">
+            <a href="{{ route('admin.users.index', ['role' => 5]) }}" class="btn-pill-secondary py-3 px-3 text-xs font-bold gap-1.5 text-center justify-center">
                 <i class="fa-solid fa-user-check text-primary"></i>
                 <span class="truncate">Kelola Magang</span>
             </a>

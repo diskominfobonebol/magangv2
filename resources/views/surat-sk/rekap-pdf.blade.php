@@ -221,8 +221,8 @@
             Bone Bolango, {{ \Carbon\Carbon::now()->translatedFormat('d F Y') }}<br>
             <strong>Kepala Dinas Komunikasi dan Informatika<br>Kabupaten Bone Bolango</strong>
             <div class="ttd-space"></div>
-            <div class="ttd-nama">Drs. H. Syamsuddin, M.Si</div>
-            <div>NIP. 196502121990031004</div>
+            <div class="ttd-nama">ICHSAN BUDIMAN WANTOGIA, S.Pi, M.Adm.Pemb</div>
+            <div>NIP. 197204102003121008</div>
         </div>
         <div class="clear"></div>
     </div>

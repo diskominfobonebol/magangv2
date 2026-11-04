@@ -189,8 +189,8 @@
             <tr>
                 <th style="width: 3.5%; text-align: center;">No</th>
                 <th style="width: 8.5%; text-align: center;">Tanggal</th>
-                <th style="width: 16%;">Nomor Surat SPT</th>
-                <th style="width: 16%;">Nomor Surat SPPD</th>
+                <th style="width: 17%;">Nomor Surat</th>
+                <th style="width: 15%;">Nomor Surat SPPD</th>
                 <th style="width: 22%;">Perihal / Uraian Tugas</th>
                 <th style="width: 11%;">Tujuan</th>
                 <th style="width: 13%;">Pegawai yang Ditugaskan</th>
@@ -200,49 +200,18 @@
         <tbody>
             @forelse($surats ?? [] as $index => $item)
             @php
-                $isSppdPdf = ($item->jenis_surat_id == 1 || str_starts_with($item->nomor_surat, '090/'));
-                
-                $directSppds = [];
-                if ($item->has_sppd && $item->pegawais) {
-                    foreach ($item->pegawais as $p) {
-                        if (!empty($p->pivot->nomor_sppd) && $p->pivot->nomor_sppd !== '-') {
-                            $directSppds[] = [
-                                'nomor' => $p->pivot->nomor_sppd,
-                                'nama' => $p->nama,
-                                'is_child' => false,
-                            ];
-                        }
-                    }
-                }
-
-                $childSppds = [];
-                if ($item->children && $item->children->count() > 0) {
-                    foreach ($item->children as $child) {
-                        if ($child->pegawais && $child->pegawais->count() > 0) {
-                            foreach ($child->pegawais as $cp) {
-                                $cNomor = $cp->pivot->nomor_sppd ?: $child->nomor_surat;
-                                if (!empty($cNomor) && $cNomor !== '-') {
-                                    $childSppds[] = [
-                                        'nomor' => $cNomor,
-                                        'nama' => $cp->nama,
-                                        'is_child' => true,
-                                    ];
-                                }
-                            }
-                        } else {
-                            $childSppds[] = [
-                                'nomor' => $child->nomor_surat,
-                                'nama' => '-',
-                                'is_child' => true,
-                            ];
-                        }
-                    }
-                }
+                $kat = $item->kategori ?? 'SPT';
+                $isSppdPdf = ($kat === 'SPPD');
+                $directSppds = $item->direct_sppds ?? [];
+                $childSppds = $item->child_sppds ?? [];
             @endphp
             <tr>
                 <td style="text-align: center;">{{ $index + 1 }}</td>
-                <td style="text-align: center;">{{ \Carbon\Carbon::parse($item->tgl_surat)->translatedFormat('d/m/Y') }}</td>
+                <td style="text-align: center;">{{ $item->tgl_surat ? \Carbon\Carbon::parse($item->tgl_surat)->translatedFormat('d/m/Y') : '-' }}</td>
                 <td style="font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #1e3a8a;">
+                    <div style="margin-bottom: 2px;">
+                        <span style="font-size: 6.5pt; padding: 1px 4px; border: 1px solid #94a3b8; border-radius: 3px; font-weight: bold; color: #334155; text-transform: uppercase;">{{ $kat }}</span>
+                    </div>
                     @if($isSppdPdf)
                         @if($item->parent)
                             {{ $item->parent->nomor_surat }} <span style="font-size: 7pt; color: #1e40af; font-weight: normal;">(Induk)</span>
@@ -259,7 +228,9 @@
                     @endif
                 </td>
                 <td style="font-family: 'Courier New', Courier, monospace; font-weight: bold;">
-                    @if(count($directSppds) > 0 || count($childSppds) > 0)
+                    @if(in_array($kat, ['Surat Telaah', 'Surat SK', 'Lainnya']))
+                        <span style="color: #666; font-weight: normal; text-align: center; display: block;">-</span>
+                    @elseif(count($directSppds) > 0 || count($childSppds) > 0)
                         <ul class="personel-list" style="list-style-type: none; padding-left: 0; margin: 0;">
                             @foreach($directSppds as $sppd)
                                 <li style="color: #9d174d; margin-bottom: 2px;">
@@ -281,7 +252,7 @@
                 <td>
                     {{ $item->uraian ?: '-' }}
                 </td>
-                <td>{{ $item->tujuan }}</td>
+                <td>{{ $item->tujuan ?: '-' }}</td>
                 <td>
                     @if($item->pegawais && $item->pegawais->count() > 0)
                         <div>
@@ -333,8 +304,8 @@
             Bone Bolango, {{ \Carbon\Carbon::now()->translatedFormat('d F Y') }}<br>
             <strong>Kepala Dinas Komunikasi dan Informatika<br>Kabupaten Bone Bolango</strong>
             <div class="ttd-space"></div>
-            <div class="ttd-nama">Drs. H. Syamsuddin, M.Si</div>
-            <div>NIP. 196502121990031004</div>
+            <div class="ttd-nama">ICHSAN BUDIMAN WANTOGIA, S.Pi, M.Adm.Pemb</div>
+            <div>NIP. 197204102003121008</div>
         </div>
         <div class="clear"></div>
     </div>

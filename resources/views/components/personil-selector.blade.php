@@ -8,7 +8,14 @@
     'includeModal' => true,
 ])
 
-<div class="space-y-3">
+@php
+    $selectedListExpr = "(typeof getSelectedPegawaiObjects === 'function' ? getSelectedPegawaiObjects() : (selectedPegawaiIds || []).map(id => {
+        const numId = Number(typeof id === 'object' && id !== null ? id.id : id);
+        return (typeof getPegawai === 'function' ? getPegawai(numId) : null) || ((typeof allPegawais !== 'undefined' && Array.isArray(allPegawais)) ? allPegawais.find(x => Number(x.id) === numId) : null);
+    }).filter(Boolean))";
+@endphp
+
+<div class="space-y-4">
     <!-- Header Section Personil -->
     <div class="flex items-center justify-between pb-2 border-b border-slate-100">
         <div class="flex items-center gap-2">
@@ -29,11 +36,47 @@
                     + Tambah Pegawai (P3K)
                 </button>
             @endif
-            <span class="text-xs font-bold text-primary" x-text="selectedPegawaiIds.length + ' Personil Dipilih'"></span>
+            <span class="text-xs font-bold text-primary" x-text="{!! $selectedListExpr !!}.length + ' Personil Dipilih'"></span>
         </div>
     </div>
 
-    <!-- Search & Add Personil Dropdown -->
+    <!-- Selected Personil List (Selalu terlihat di atas, tidak tertutup dropdown) -->
+    <div class="border border-blue-200/60 rounded-2xl p-3 bg-slate-50/50 space-y-2">
+        <template x-for="p in {!! $selectedListExpr !!}" :key="'sel-peg-card-' + p.id">
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-blue-100 shadow-sm text-xs transition-all hover:border-blue-200">
+                <input type="hidden" name="{{ $name }}" :value="p.id">
+                <div>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="font-bold text-navy text-xs" x-text="p.nama"></span>
+                        <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold"
+                              :class="p.kategori_pegawai === 'P3K' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'"
+                              x-text="p.kategori_pegawai || 'ASN'">
+                        </span>
+                        <template x-if="typeof isOutsideSpt === 'function' && isOutsideSpt(p.id)">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                                Di luar SPT
+                            </span>
+                        </template>
+                        <template x-if="typeof isOutsideSpt === 'function' && !isOutsideSpt(p.id) && ((typeof parentSptPegawaiIds !== 'undefined' && parentSptPegawaiIds && parentSptPegawaiIds.length > 0) || (typeof selectedSpt !== 'undefined' && selectedSpt && selectedSpt.pegawais && selectedSpt.pegawais.length > 0))">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                Rujukan SPT
+                            </span>
+                        </template>
+                    </div>
+                    <span class="text-[11px] text-slate-400 block mt-0.5" x-text="(p.kategori_pegawai === 'P3K' ? 'No. Identitas: ' : 'NIP. ') + (p.nip || '-') + ' • ' + (p.jabatan || '')"></span>
+                </div>
+                <button type="button" @click="removePegawai(p.id)" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 cursor-pointer transition-colors" title="Hapus personil">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </template>
+
+        <div x-show="{!! $selectedListExpr !!}.length === 0" class="p-3 text-center text-xs text-slate-400 italic bg-white rounded-xl">
+            {{ $emptyMessage }}
+        </div>
+    </div>
+
+    <!-- Search & Add Personil Dropdown (Di bawah daftar terpilih agar dropdown membuka ke bawah tanpa menutupi kartu) -->
     <div class="relative" @click.outside="showPegawaiDropdown = false">
         <div class="relative">
             <input type="text" 
@@ -60,13 +103,17 @@
         <div x-show="showPegawaiDropdown && filteredPegawais().length > 0" 
              x-cloak
              style="display:none;" 
-             class="absolute z-40 w-full mt-1 bg-white border border-blue-200/80 rounded-2xl shadow-xl max-h-60 overflow-y-auto">
+             class="absolute z-50 w-full mt-1 bg-white border border-blue-200/80 rounded-2xl shadow-xl max-h-60 overflow-y-auto">
             <ul class="py-1 divide-y divide-slate-100">
                 <template x-for="p in filteredPegawais()" :key="'peg-opt-' + p.id">
-                    <li @mousedown.prevent="addPegawai(p)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors flex items-center justify-between group">
+                    <li @mousedown.prevent="selectedPegawaiIds.some(pid => Number(pid) === Number(p.id)) ? null : addPegawai(p)" 
+                        class="px-4 py-2 hover:bg-blue-50 transition-colors flex items-center justify-between group"
+                        :class="selectedPegawaiIds.some(pid => Number(pid) === Number(p.id)) ? 'bg-slate-50/70 cursor-default' : 'cursor-pointer'">
                         <div>
                             <div class="flex items-center gap-1.5">
-                                <div class="text-sm text-navy font-bold group-hover:text-primary transition-colors" x-text="p.nama"></div>
+                                <div class="text-sm font-bold group-hover:text-primary transition-colors" 
+                                     :class="selectedPegawaiIds.some(pid => Number(pid) === Number(p.id)) ? 'text-slate-500' : 'text-navy'" 
+                                     x-text="p.nama"></div>
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold"
                                       :class="p.kategori_pegawai === 'P3K' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'"
                                       x-text="p.kategori_pegawai || 'ASN'">
@@ -76,7 +123,23 @@
                                 <span x-text="(p.kategori_pegawai === 'P3K' ? 'No. Identitas P3K: ' : 'NIP. ') + (p.nip || '-')"></span> &bull; <span x-text="p.jabatan"></span>
                             </div>
                         </div>
-                        <span class="text-[10px] font-bold text-primary bg-blue-100 px-2.5 py-1 rounded-lg shrink-0 ml-2 group-hover:bg-primary group-hover:text-white transition-colors">+ Tambah</span>
+
+                        <!-- Status Tombol: Sudah Dipilih atau + Tambah -->
+                        <div>
+                            <template x-if="selectedPegawaiIds.some(pid => Number(pid) === Number(p.id))">
+                                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg shrink-0 ml-2 inline-flex items-center gap-1">
+                                    <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                    Sudah Dipilih
+                                </span>
+                            </template>
+                            <template x-if="!selectedPegawaiIds.some(pid => Number(pid) === Number(p.id))">
+                                <button type="button" 
+                                        @mousedown.prevent="addPegawai(p)" 
+                                        class="text-[10px] font-bold text-blue-700 bg-blue-100 hover:!bg-blue-600 hover:!text-white group-hover:!bg-blue-600 group-hover:!text-white focus:!bg-blue-600 focus:!text-white px-2.5 py-1 rounded-lg shrink-0 ml-2 transition-colors inline-flex items-center gap-1 cursor-pointer">
+                                    + Tambah
+                                </button>
+                            </template>
+                        </div>
                     </li>
                 </template>
                 @if($showP3kButton)
@@ -95,7 +158,7 @@
         <div x-show="showPegawaiDropdown && searchPegawai && searchPegawai.trim().length > 0 && filteredPegawais().length === 0" 
              x-cloak
              style="display:none;" 
-             class="absolute z-40 w-full mt-1 bg-white border border-amber-200/80 rounded-2xl shadow-xl p-4 text-center">
+             class="absolute z-50 w-full mt-1 bg-white border border-amber-200/80 rounded-2xl shadow-xl p-4 text-center">
             <p class="text-xs text-slate-500 mb-2">Pegawai "<span class="font-bold text-navy" x-text="searchPegawai"></span>" tidak ditemukan.</p>
             @if($showP3kButton)
                 <button type="button" @click="openModalP3k(searchPegawai)" class="btn-pill-primary !bg-gradient-to-r !from-amber-500 !to-orange-500 hover:!from-amber-600 hover:!to-orange-600 px-4 py-1.5 text-xs font-bold gap-1.5 shadow-sm inline-flex items-center cursor-pointer">
@@ -103,32 +166,6 @@
                     + Tambah Pegawai Baru (P3K)
                 </button>
             @endif
-        </div>
-    </div>
-
-    <!-- Selected Personil List -->
-    <div class="border border-blue-200/60 rounded-2xl p-3 bg-slate-50/50 space-y-2">
-        <template x-for="p in getSelectedPegawaiObjects()" :key="'sel-peg-card-' + p.id">
-            <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-blue-100 shadow-sm text-xs">
-                <input type="hidden" name="{{ $name }}" :value="p.id">
-                <div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="font-bold text-navy" x-text="p.nama"></span>
-                        <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold"
-                              :class="p.kategori_pegawai === 'P3K' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'"
-                              x-text="p.kategori_pegawai || 'ASN'">
-                        </span>
-                    </div>
-                    <span class="text-[11px] text-slate-400 block" x-text="(p.kategori_pegawai === 'P3K' ? 'No. Identitas: ' : 'NIP. ') + (p.nip || '-') + ' • ' + (p.jabatan || '')"></span>
-                </div>
-                <button type="button" @click="removePegawai(p.id)" class="text-slate-400 hover:text-rose-600 p-1 cursor-pointer transition-colors" title="Hapus personil">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
-        </template>
-
-        <div x-show="selectedPegawaiIds.length === 0" class="p-3 text-center text-xs text-slate-400 italic bg-white rounded-xl">
-            {{ $emptyMessage }}
         </div>
     </div>
 </div>

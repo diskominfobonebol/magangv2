@@ -116,7 +116,7 @@
     <div class="bg-card-gradient rounded-3xl p-6 space-y-4 border border-blue-200/50 shadow-xl shadow-blue-900/5">
         <!-- Toolbar Filter & Search -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-blue-100/80 pb-4">
-            <form action="{{ route('admin.users') }}" method="GET" class="flex flex-wrap items-center gap-2 flex-1">
+            <form action="{{ route('admin.users.index') }}" method="GET" class="flex flex-wrap items-center gap-2 flex-1">
                 <div class="relative flex-1 min-w-[200px] max-w-sm">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                     <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari nama, email, NIP, instansi..." class="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-full text-xs font-semibold text-[#172554] focus:ring-2 focus:ring-[#3B82F6] focus:outline-none">
@@ -164,6 +164,7 @@
                         <th class="px-4 py-3">Email / NIP Login</th>
                         <th class="px-4 py-3">Instansi / Bidang</th>
                         <th class="px-4 py-3 text-center">Peran (Role)</th>
+                        <th class="px-4 py-3 text-center">Status 2FA</th>
                         <th class="px-4 py-3 text-center">Status</th>
                         <th class="px-4 py-3">Terdaftar</th>
                         <th class="px-4 py-3 text-center">Aksi Manajemen</th>
@@ -213,6 +214,19 @@
                             </span>
                         </td>
                         <td class="px-4 py-3 text-center">
+                            @if($user->two_factor_confirmed_at)
+                                <span class="px-2.5 py-1 text-[11px] font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1 shadow-xs">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    <span>Aktif</span>
+                                </span>
+                            @else
+                                <span class="px-2.5 py-1 text-[11px] font-bold rounded-full bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center gap-1 shadow-xs">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                    <span>Belum</span>
+                                </span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-center">
                             @if($user->is_active)
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                     <i class="fa-solid fa-circle-check mr-1 text-emerald-600"></i>Aktif
@@ -242,9 +256,17 @@
                                     <i class="fa-solid fa-key text-xs"></i>
                                 </button>
 
+                                <!-- Tombol Reset 2FA -->
+                                <button type="button" 
+                                        @click="openReset2faModal({{ $user->id }}, '{{ addslashes($user->name) }}', '{{ addslashes($user->email) }}')" 
+                                        title="Reset 2FA Saja" 
+                                        class="w-7 h-7 rounded-full bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white transition flex items-center justify-center cursor-pointer">
+                                    <i class="fa-solid fa-shield-halved text-xs"></i>
+                                </button>
+
                                 @if($user->id !== Auth::id())
                                     <!-- Tombol Toggle Status -->
-                                    <form action="{{ route('admin.users.toggle_status', $user->id) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin {{ $user->is_active ? 'menonaktifkan' : 'mengaktifkan kembali' }} akun user ini?')">
+                                    <form action="{{ route('admin.users.toggle-status', $user->id) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin {{ $user->is_active ? 'menonaktifkan' : 'mengaktifkan kembali' }} akun user ini?')">
                                         @csrf
                                         <button type="submit" title="{{ $user->is_active ? 'Nonaktifkan Akun' : 'Aktifkan Akun' }}" class="w-7 h-7 rounded-full {{ $user->is_active ? 'bg-slate-100 text-slate-600 hover:bg-slate-700 hover:text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' }} transition flex items-center justify-center cursor-pointer">
                                             <i class="fa-solid {{ $user->is_active ? 'fa-ban' : 'fa-check' }} text-xs"></i>
@@ -576,14 +598,49 @@
     </div>
     @endif
 
+    <!-- MODAL KONFIRMASI RESET 2FA -->
+    <div x-show="showReset2faModal" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-card-gradient rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-blue-200/80" @click.away="closeReset2faModal()">
+            <div class="flex justify-between items-center border-b border-blue-100 pb-3">
+                <h3 class="font-black text-[#172554] text-base flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center">
+                        <i class="fa-solid fa-shield-halved text-xs"></i>
+                    </div>
+                    <span>Konfirmasi Reset 2FA</span>
+                </h3>
+                <button @click="closeReset2faModal()" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form :action="'{{ url('admin/users') }}/' + target2faUser.id + '/reset-2fa'" method="POST" class="space-y-4">
+                @csrf
+                <div class="text-xs text-slate-600 space-y-2">
+                    <p>Reset Autentikasi Dua Faktor (2FA) untuk pengguna <strong class="font-bold text-[#172554]" x-text="target2faUser.name"></strong> (<span class="font-mono text-slate-600" x-text="target2faUser.email"></span>)?</p>
+                    <div class="p-3 bg-purple-50 rounded-xl border border-purple-200 text-purple-900 text-[11px] leading-relaxed">
+                        <i class="fa-solid fa-circle-info mr-1 text-purple-600"></i>
+                        Password pengguna <strong>TIDAK</strong> akan berubah. Seluruh secret key dan recovery code 2FA saat ini akan dihapus. Pengguna wajib melakukan pemindaian QR code baru saat login berikutnya.
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t border-blue-100">
+                    <button type="button" @click="closeReset2faModal()" class="btn-pill-secondary px-4 py-2 text-xs font-bold cursor-pointer">Batal</button>
+                    <button type="submit" class="btn-pill-primary px-4 py-2 text-xs font-bold shadow-md cursor-pointer !bg-purple-600 hover:!bg-purple-700">Ya, Reset 2FA Saja</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         function userManagement() {
             return {
                 showAddModal: false,
                 showEditModal: false,
                 showResetModal: false,
+                showReset2faModal: false,
                 editItem: { id: null, name: '', email: '', role_id: 3, instansi_bidang: '' },
                 targetUser: { id: null, name: '', email: '' },
+                target2faUser: { id: null, name: '', email: '' },
                 openEditModal(user) {
                     this.editItem = {
                         id: user.id,
@@ -601,6 +658,14 @@
                 closeResetModal() {
                     this.showResetModal = false;
                     this.targetUser = { id: null, name: '', email: '' };
+                },
+                openReset2faModal(id, name, email) {
+                    this.target2faUser = { id: id, name: name, email: email };
+                    this.showReset2faModal = true;
+                },
+                closeReset2faModal() {
+                    this.showReset2faModal = false;
+                    this.target2faUser = { id: null, name: '', email: '' };
                 }
             };
         }

@@ -537,6 +537,7 @@
                         </div>
                         @endif
 
+                        @if($surat->jenis_surat_id == 2)
                         <div class="space-y-2">
                             <label class="form-label text-xs">
                                 {{ ($surat->file_name || $surat->google_drive_url) ? 'Ganti / Perbarui Berkas Scan' : 'Unggah Berkas Scan (Opsional)' }}
@@ -596,6 +597,8 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        @endif
                             
                         <!-- Field Link Google Drive Bukti Fisik -->
                         <div class="pt-2 border-t border-slate-100">
@@ -739,55 +742,17 @@
             },
             evaluateBackdate() {
                 if (!this.tanggal) return;
-                const d = new Date(this.tanggal);
-                if (isNaN(d)) return;
-                const thn = String(d.getFullYear());
-                const bln = this.formatBulanRomawi();
                 const targetDate = this.tanggal;
-                const seriesKey = (this.jenisSurat === 'SPPD') ? 'sppd' : 'spt';
                 const jp = (this.selectedSpt && this.selectedSpt.jenis_penugasan) ? this.selectedSpt.jenis_penugasan : 'DD';
 
-                if (this.seriesSummary && this.seriesSummary[seriesKey]) {
-                    const items = this.seriesSummary[seriesKey][thn] || [];
-                    const maxBaseSeq = items.reduce((max, it) => Math.max(max, it.base_seq || 0), 0);
-                    const latestDate = items.reduce((latest, it) => (!latest || it.tgl_surat > latest) ? it.tgl_surat : latest, null);
-
-                    if (items.length > 0 && latestDate && targetDate < latestDate) {
-                        this.isBackdate = true;
-                        const predecessors = items.filter(it => it.tgl_surat <= targetDate)
-                            .sort((a, b) => (b.tgl_surat.localeCompare(a.tgl_surat) || b.base_seq - a.base_seq));
-                        const pred = predecessors[0] || items.sort((a, b) => a.tgl_surat.localeCompare(b.tgl_surat))[0];
-                        const baseSeq = pred ? pred.base_seq : 1;
-                        const paddedBase = String(baseSeq).padStart(3, '0');
-                        const predNomor = pred ? pred.nomor_surat : (this.jenisSurat === 'SPPD' ? `090/KOMINFO-BB/SPPD/${jp}/${paddedBase}/${bln}/${thn}` : `555/KOMINFO-BB/SPT-DD/${paddedBase}/${bln}/${thn}`);
-
-                        const usedLetters = items.filter(it => it.base_seq === baseSeq).map(it => it.letter).filter(Boolean);
-                        let letterIdx = 0;
-                        while (usedLetters.includes(this.getLetterSuffix(letterIdx))) {
-                            letterIdx++;
-                        }
-                        const letter = this.getLetterSuffix(letterIdx);
-                        this.nomorUrut = paddedBase + letter;
-                        const previewNomor = (this.jenisSurat === 'SPPD') 
-                            ? `090/KOMINFO-BB/SPPD/${jp}/${paddedBase}${letter}/${bln}/${thn}`
-                            : `555/KOMINFO-BB/SPT-DD/${paddedBase}${letter}/${bln}/${thn}`;
-                        this.backdateNotice = `Terdeteksi tanggal mundur (backdate) — nomor akan disisipkan sebagai anak dari nomor ${predNomor}, menjadi ${previewNomor}.`;
-                    } else {
-                        this.isBackdate = false;
-                        this.backdateNotice = '';
-                        this.nomorUrut = String(maxBaseSeq + 1).padStart(3, '0');
-                    }
-                }
-
-                // Sync with backend API
-                fetch(`/surat/api/check-backdate?series=${this.jenisSurat}&tgl_surat=${targetDate}&jenis_penugasan=${jp}`)
+                // Sync with backend API (satu sumber kebenaran)
+                fetch(`/surat/api/check-backdate?series=${encodeURIComponent(this.jenisSurat)}&tgl_surat=${encodeURIComponent(targetDate)}&jenis_penugasan=${encodeURIComponent(jp)}`)
                     .then(res => res.json())
                     .then(data => {
                         if (data) {
                             this.isBackdate = Boolean(data.is_backdate);
                             this.nomorUrut = data.next_seq;
-                            this.backdateNotice = data.notice || '';
-                            this.predecessorNomor = data.predecessor_nomor || '';
+                            this.backdateNotice = data.notice || (data.is_backdate ? 'Tanggal surat sebelum hari ini (backdate), nomor harus diisi manual.' : '');
                         }
                     })
                     .catch(() => {});

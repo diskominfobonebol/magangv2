@@ -379,3 +379,40 @@ button:disabled, .btn-disabled, input:disabled {
 .text-blue-light { color: var(--color-blue-light) !important; }
 .text-pink-light { color: var(--color-pink-light) !important; }
 
+/* 13. Filter Bar Top Row (Cari Nomor/Perihal & Kategori Surat) */
+.filter-top-row {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+    width: 100%;
+}
+
+.filter-col-search {
+    flex: 2 1 0%;
+    width: 100%;
+    min-width: 0;
+}
+
+.filter-col-category {
+    flex: 1 1 0%;
+    width: 100%;
+    min-width: 0;
+}
+
+@media (min-width: 640px) {
+    .filter-top-row {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+        align-items: flex-end;
+    }
+}
+
+@media (min-width: 1024px) {
+    .filter-top-row {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        align-items: flex-end;
+    }
+}
+

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Surat;
+use App\Models\NomorSuratTerpakai;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -41,7 +42,7 @@ class SppdNumberingService
     }
 
     /**
-     * Hitung suffix huruf dari index (0->a, 1->b, 25->z, 26->aa, etc.)
+     * Hitung suffix huruf dari index (dipertahankan untuk membaca format nomor lama yang berhuruf).
      */
     public static function getLetterSuffix(int $index): string
     {
@@ -50,7 +51,7 @@ class SppdNumberingService
 
     /**
      * Format resmi Nomor Surat SPT:
-     * 555/KOMINFO-BB/SPT-{jenis_penugasan}/{nomor_urut}{huruf_opsional}/{bulan_romawi}/{tahun}
+     * 555/KOMINFO-BB/SPT-{jenis_penugasan}/{nomor_urut}/{bulan_romawi}/{tahun}
      */
     public static function formatNomorSpt(string $noUrut, $letterOrTgl = '', $tglSurat = null, string $jenisPenugasan = 'DD'): string
     {
@@ -59,7 +60,7 @@ class SppdNumberingService
 
     /**
      * Format resmi Nomor Surat SPPD:
-     * 090/KOMINFO-BB/SPPD/{jenis_penugasan}/{nomor_urut}{huruf_opsional}/{bulan_romawi}/{tahun}
+     * 090/KOMINFO-BB/SPPD/{jenis_penugasan}/{nomor_urut}/{bulan_romawi}/{tahun}
      */
     public static function formatNomorSppd(string $sppdUrut, string $letter = '', $tglSurat = null, string $jenisPenugasan = 'DD'): string
     {
@@ -67,27 +68,34 @@ class SppdNumberingService
     }
 
     /**
-     * Validasi format nomor surat SPPD manual jika diisi.
+     * Validasi nomor surat manual: diterima apa adanya (setelah trim, tanpa memaksa regex),
+     * dengan batas panjang wajar (maks 255 char) dan wajib unik lintas seluruh surat keluar.
      */
-    public static function validateManualNomorSppd(string $nomor): void
+    public static function validateManualNomorSurat(string $nomor, ?string $excludeTable = null, ?int $excludeId = null): void
     {
         $clean = trim($nomor);
-        $pattern = '/^090\/KOMINFO-BB\/SPPD\/[A-Za-z0-9_-]+\/\d{3,}[a-z]*\/(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII)\/\d{4}$/';
-        if (!preg_match($pattern, $clean)) {
-            throw new InvalidArgumentException("Format nomor SPPD manual tidak sesuai dengan format resmi. Contoh: 090/KOMINFO-BB/SPPD/DD/001a/IX/" . date('Y'));
+        if ($clean === '' || $clean === '-') {
+            throw new InvalidArgumentException("Nomor surat manual tidak boleh kosong.");
+        }
+        if (strlen($clean) > 255) {
+            throw new InvalidArgumentException("Panjang nomor surat manual melebihi batas wajar (maksimal 255 karakter).");
+        }
+
+        $dupe = NomorSuratService::checkDuplicate($clean, $excludeTable, $excludeId);
+        if ($dupe) {
+            $tglStr = $dupe['tgl_surat'] ? " tanggal " . date('d/m/Y', strtotime($dupe['tgl_surat'])) : "";
+            throw new InvalidArgumentException("Nomor surat '{$clean}' sudah digunakan oleh {$dupe['kategori']}{$tglStr}. Silakan gunakan nomor lain.");
         }
     }
 
-    /**
-     * Validasi format nomor surat SPT manual jika diisi.
-     */
-    public static function validateManualNomorSpt(string $nomor): void
+    public static function validateManualNomorSppd(string $nomor, ?int $excludeId = null): void
     {
-        $clean = trim($nomor);
-        $pattern = '/^555\/KOMINFO-BB\/SPT-[A-Za-z0-9_-]+\/\d{3,}[a-z]*\/(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII)\/\d{4}$/';
-        if (!preg_match($pattern, $clean)) {
-            throw new InvalidArgumentException("Format nomor SPT manual tidak sesuai dengan format resmi. Contoh: 555/KOMINFO-BB/SPT-DD/001a/IX/" . date('Y'));
-        }
+        self::validateManualNomorSurat($nomor, 'surats', $excludeId);
+    }
+
+    public static function validateManualNomorSpt(string $nomor, ?int $excludeId = null): void
+    {
+        self::validateManualNomorSurat($nomor, 'surats', $excludeId);
     }
 
     /**
@@ -102,7 +110,6 @@ class SppdNumberingService
         if ($series === 'SPT') {
             $query = Surat::whereNotNull('nomor_surat')
                 ->where('nomor_surat', '!=', '')
-                ->where('status', '!=', 'Draft')
                 ->where(function($q) {
                     $q->where('jenis_surat_id', 2)
                       ->orWhereNull('jenis_surat_id')
@@ -119,6 +126,9 @@ class SppdNumberingService
 
             foreach ($query->get(['id', 'nomor_surat', 'tgl_surat', 'status']) as $s) {
                 $comp = Surat::extractSequenceComponents($s->nomor_surat);
+                if ($comp['base_seq'] <= 0) {
+                    continue; // Lewati nomor manual/legacy yang tidak cocok pola resmi dari perhitungan nomor urut berikutnya
+                }
                 $items->push([
                     'id' => $s->id,
                     'nomor_surat' => $s->nomor_surat,
@@ -130,10 +140,9 @@ class SppdNumberingService
                 ]);
             }
         } elseif ($series === 'SPPD') {
-            // 1. Dari tabel surats (SPPD standalone atau child document)
+            // 1. Dari tabel surats
             $querySurat = Surat::whereNotNull('nomor_surat')
                 ->where('nomor_surat', '!=', '')
-                ->where('status', '!=', 'Draft')
                 ->where(function($q) {
                     $q->where('jenis_surat_id', 1)
                       ->orWhere('nomor_surat', 'like', '090/%');
@@ -149,6 +158,9 @@ class SppdNumberingService
 
             foreach ($querySurat->get(['id', 'nomor_surat', 'tgl_surat', 'status']) as $s) {
                 $comp = Surat::extractSequenceComponents($s->nomor_surat);
+                if ($comp['base_seq'] <= 0) {
+                    continue;
+                }
                 $items->push([
                     'id' => $s->id,
                     'nomor_surat' => $s->nomor_surat,
@@ -160,14 +172,13 @@ class SppdNumberingService
                 ]);
             }
 
-            // 2. Dari tabel surat_pegawai (SPPD yang melekat pada SPT)
+            // 2. Dari tabel surat_pegawai
             $queryPivot = DB::table('surat_pegawai')
                 ->join('surats', 'surat_pegawai.surat_id', '=', 'surats.id')
                 ->whereNotNull('surat_pegawai.nomor_sppd')
                 ->where('surat_pegawai.nomor_sppd', '!=', '')
                 ->where('surat_pegawai.nomor_sppd', '!=', '-')
                 ->where('surat_pegawai.nomor_sppd', 'like', '090/%')
-                ->where('surats.status', '!=', 'Draft')
                 ->where(function($q) use ($year) {
                     $q->whereYear('surats.tgl_surat', $year)
                       ->orWhere('surat_pegawai.nomor_sppd', 'like', "%/{$year}");
@@ -185,6 +196,9 @@ class SppdNumberingService
 
             foreach ($pivotRows as $p) {
                 $comp = Surat::extractSequenceComponents($p->nomor_sppd);
+                if ($comp['base_seq'] <= 0) {
+                    continue;
+                }
                 $items->push([
                     'id' => $p->surat_id,
                     'nomor_surat' => $p->nomor_sppd,
@@ -197,40 +211,18 @@ class SppdNumberingService
             }
         }
 
-        // Deduplikasi berdasarkan nomor_surat
-        $unique = $items->unique('nomor_surat')->values();
-
-        return $unique->all();
+        return $items->unique('nomor_surat')->values()->all();
     }
 
-    /**
-     * Hitung urutan tertinggi (max sequence) di seri tertentu pada tahun tertentu.
-     */
     public static function getMaxSequence(string $series, $year = null, $excludeId = null): int
     {
-        $items = self::getAllSeriesItems($series, $year, $excludeId);
-        if (empty($items)) {
-            return 0;
-        }
-
-        $max = 0;
-        foreach ($items as $item) {
-            if ($item['base_seq'] > $max) {
-                $max = $item['base_seq'];
-            }
-        }
-        return $max;
+        return NomorSuratService::getMaxSequence($series, (int)($year ?: date('Y')), $excludeId);
     }
 
     /**
-     * Evaluasi kondisi Backdate dan penomoran untuk seri tertentu.
-     *
-     * @param string $series 'SPT' atau 'SPPD'
-     * @param string|null $targetDate Tanggal surat yang diinput
-     * @param string $jenisPenugasan 'DD' atau 'LD'
-     * @param array $usedBatch Nomor yang sudah digenerate dalam batch request yang sama
-     * @param int|null $excludeId ID dokumen yang sedang diedit (jika ada)
-     * @return array
+     * Evaluasi kondisi Backdate dan nomor urut berikutnya.
+     * Tidak ada lagi nomor berhuruf otomatis.
+     * Jika backdate (target_date < today), mode otomatis dinonaktifkan dan harus manual.
      */
     public static function checkBackdate(
         string $series,
@@ -241,141 +233,28 @@ class SppdNumberingService
     ): array {
         $series = strtoupper(trim($series));
         $targetDate = $targetDate ? date('Y-m-d', strtotime($targetDate)) : date('Y-m-d');
-        $year = date('Y', strtotime($targetDate));
-        $bln = self::formatBulanRomawi($targetDate);
-        $thn = self::formatTahun($targetDate);
         $jp = strtoupper(trim($jenisPenugasan ?: 'DD'));
 
-        $items = collect(self::getAllSeriesItems($series, $year, $excludeId));
+        $eval = NomorSuratService::isBackdate($series, $targetDate, $excludeId);
 
-        // Sertakan juga nomor yang ada di batch yang cocok dengan tahun dan seri ini
-        foreach ($usedBatch as $batchNum) {
-            if (empty($batchNum) || $batchNum === '-') continue;
-            if ($series === 'SPT' && !str_starts_with($batchNum, '555/')) continue;
-            if ($series === 'SPPD' && !str_starts_with($batchNum, '090/')) continue;
+        $year = (int)date('Y', strtotime($targetDate));
+        $maxSeq = NomorSuratService::getMaxSequence($series, $year, $excludeId);
+        $nextCounter = $maxSeq + 1;
+        $paddedSeq = str_pad($nextCounter, 3, '0', STR_PAD_LEFT);
 
-            $comp = Surat::extractSequenceComponents($batchNum);
-            $items->push([
-                'id' => null,
-                'nomor_surat' => $batchNum,
-                'tgl_surat' => $targetDate,
-                'base_seq' => $comp['base_seq'],
-                'padded_seq' => $comp['padded_seq'],
-                'letter' => $comp['letter'],
-                'full_seq' => $comp['full_seq'],
-            ]);
-        }
+        $previewNomor = NomorSuratService::formatCandidateNomor($series, $nextCounter, $targetDate, $jp);
 
-        $items = $items->unique('nomor_surat')->values();
-
-        // 1. Cari surat dengan nomor urut TERTINGGI (max base_seq) yang sudah ada di seri dan tahun yang sama
-        $maxBaseSeq = 0;
-        $highestSurat = null;
-
-        if ($items->isNotEmpty()) {
-            $maxBaseSeq = $items->max('base_seq');
-            // Ambil surat dengan max base_seq; jika ada beberapa (misal 002, 002a), cari yang tanpa huruf atau tanggal terbaru
-            $candidates = $items->where('base_seq', $maxBaseSeq)->sortByDesc('tgl_surat')->values();
-            $highestSurat = $candidates->first();
-        }
-
-        $highestDate = $highestSurat ? $highestSurat['tgl_surat'] : null;
-
-        // 2. Evaluasi Backdate:
-        // Terjadi HANYA jika sudah ada surat di seri & tahun ini, dan targetDate < tanggal_surat milik surat urut tertinggi
-        $isBackdate = ($highestSurat !== null && $highestDate !== null && $targetDate < $highestDate);
-
-        if ($isBackdate) {
-            // === JALUR BACKDATE ===
-            // Cari surat pendahulu: surat di seri yang sama dengan tanggal_surat terakhir yang masih <= targetDate
-            $predecessors = $items->filter(function($it) use ($targetDate) {
-                return $it['tgl_surat'] <= $targetDate;
-            })->sort(function($a, $b) {
-                if ($a['tgl_surat'] !== $b['tgl_surat']) {
-                    return strcmp($b['tgl_surat'], $a['tgl_surat']); // Tgl DESC
-                }
-                if ($a['base_seq'] !== $b['base_seq']) {
-                    return $b['base_seq'] - $a['base_seq']; // Base seq DESC
-                }
-                return strcmp($b['letter'], $a['letter']); // Letter DESC
-            })->values();
-
-            if ($predecessors->isNotEmpty()) {
-                $predecessor = $predecessors->first();
-            } else {
-                // Jika input date lebih awal dari surat pertama, jadikan surat urutan terendah sebagai pendahulu
-                $predecessor = $items->sortBy('base_seq')->sortBy('tgl_surat')->first();
-            }
-
-            $baseSeq = $predecessor['base_seq'];
-            $paddedBaseSeq = $predecessor['padded_seq'];
-            $predecessorNomor = $predecessor['nomor_surat'];
-
-            // Kumpulkan huruf suffix yang sudah dipakai untuk base_seq ini
-            $usedLetters = $items->where('base_seq', $baseSeq)
-                ->pluck('letter')
-                ->filter(function($l) { return $l !== ''; })
-                ->unique()
-                ->values()
-                ->all();
-
-            $letterIndex = 0;
-            while (in_array(self::getLetterSuffix($letterIndex), $usedLetters, true)) {
-                $letterIndex++;
-            }
-            $letter = self::getLetterSuffix($letterIndex);
-            $nextSeq = $paddedBaseSeq . $letter;
-
-            if ($series === 'SPT') {
-                $previewNomor = self::formatNomorSpt($paddedBaseSeq, $letter, $targetDate, $jp);
-            } else {
-                $previewNomor = self::formatNomorSppd($paddedBaseSeq, $letter, $targetDate, $jp);
-            }
-
-            $notice = "Terdeteksi tanggal mundur (backdate) — nomor akan disisipkan sebagai anak dari nomor {$predecessorNomor}, menjadi {$previewNomor}.";
-
-            return [
-                'is_backdate' => true,
-                'series' => $series,
-                'target_date' => $targetDate,
-                'highest_surat' => $highestSurat['nomor_surat'],
-                'highest_date' => $highestDate,
-                'predecessor_nomor' => $predecessorNomor,
-                'predecessor_seq' => $paddedBaseSeq,
-                'base_seq' => $paddedBaseSeq,
-                'letter' => $letter,
-                'next_seq' => $nextSeq,
-                'preview_nomor' => $previewNomor,
-                'notice' => $notice,
-            ];
-        } else {
-            // === JALUR NORMAL (NON-BACKDATE) ===
-            $nextCounter = $maxBaseSeq + 1;
-            $paddedSeq = str_pad($nextCounter, 3, '0', STR_PAD_LEFT);
-            $letter = '';
-            $nextSeq = $paddedSeq;
-
-            if ($series === 'SPT') {
-                $previewNomor = self::formatNomorSpt($paddedSeq, '', $targetDate, $jp);
-            } else {
-                $previewNomor = self::formatNomorSppd($paddedSeq, '', $targetDate, $jp);
-            }
-
-            return [
-                'is_backdate' => false,
-                'series' => $series,
-                'target_date' => $targetDate,
-                'highest_surat' => $highestSurat ? $highestSurat['nomor_surat'] : null,
-                'highest_date' => $highestDate,
-                'predecessor_nomor' => null,
-                'predecessor_seq' => null,
-                'base_seq' => $paddedSeq,
-                'letter' => '',
-                'next_seq' => $nextSeq,
-                'preview_nomor' => $previewNomor,
-                'notice' => null,
-            ];
-        }
+        return [
+            'is_backdate' => $eval['is_backdate'],
+            'series' => $series,
+            'target_date' => $targetDate,
+            'latest_date' => null,
+            'notice' => $eval['notice'],
+            'base_seq' => $paddedSeq,
+            'next_seq' => $paddedSeq,
+            'preview_nomor' => $previewNomor,
+            'mode_nomor_allowed' => $eval['is_backdate'] ? ['manual'] : ['otomatis', 'manual'],
+        ];
     }
 
     /**
@@ -391,66 +270,15 @@ class SppdNumberingService
     ): string {
         $series = strtoupper(trim($series));
 
-        if (!empty($manualNomor) && trim($manualNomor) !== '') {
-            $manualClean = trim($manualNomor);
-            if ($series === 'SPT') {
-                self::validateManualNomorSpt($manualClean);
-            } else {
-                self::validateManualNomorSppd($manualClean);
-            }
-            return $manualClean;
+        // Jika nomor diisi manual oleh admin
+        if (!empty($manualNomor) && trim($manualNomor) !== '' && trim($manualNomor) !== '-') {
+            $clean = trim($manualNomor);
+            self::validateManualNomorSurat($clean, 'surats', $excludeId);
+            return $clean;
         }
 
-        $targetDate = $targetDate ? date('Y-m-d', strtotime($targetDate)) : date('Y-m-d');
-        $eval = self::checkBackdate($series, $targetDate, $jenisPenugasan, $usedBatch, $excludeId);
-
-        // Pastikan tidak collides dengan database atau batch
-        if ($eval['is_backdate']) {
-            $baseSeq = $eval['base_seq'];
-            $letterIndex = 0;
-            while (true) {
-                $letter = self::getLetterSuffix($letterIndex);
-                if ($series === 'SPT') {
-                    $candidate = self::formatNomorSpt($baseSeq, $letter, $targetDate, $jenisPenugasan);
-                } else {
-                    $candidate = self::formatNomorSppd($baseSeq, $letter, $targetDate, $jenisPenugasan);
-                }
-
-                $inBatch = in_array($candidate, $usedBatch, true);
-                $existsSurat = Surat::where('nomor_surat', $candidate)
-                    ->when($excludeId, function($q) use ($excludeId) { $q->where('id', '!=', $excludeId); })
-                    ->exists();
-                $existsPivot = ($series === 'SPPD') ? DB::table('surat_pegawai')->where('nomor_sppd', $candidate)->exists() : false;
-
-                if (!$inBatch && !$existsSurat && !$existsPivot) {
-                    $usedBatch[] = $candidate;
-                    return $candidate;
-                }
-                $letterIndex++;
-            }
-        } else {
-            $counter = (int)$eval['base_seq'];
-            while (true) {
-                $padded = str_pad($counter, 3, '0', STR_PAD_LEFT);
-                if ($series === 'SPT') {
-                    $candidate = self::formatNomorSpt($padded, '', $targetDate, $jenisPenugasan);
-                } else {
-                    $candidate = self::formatNomorSppd($padded, '', $targetDate, $jenisPenugasan);
-                }
-
-                $inBatch = in_array($candidate, $usedBatch, true);
-                $existsSurat = Surat::where('nomor_surat', $candidate)
-                    ->when($excludeId, function($q) use ($excludeId) { $q->where('id', '!=', $excludeId); })
-                    ->exists();
-                $existsPivot = ($series === 'SPPD') ? DB::table('surat_pegawai')->where('nomor_sppd', $candidate)->exists() : false;
-
-                if (!$inBatch && !$existsSurat && !$existsPivot) {
-                    $usedBatch[] = $candidate;
-                    return $candidate;
-                }
-                $counter++;
-            }
-        }
+        // Generate otomatis berurut murni via NomorSuratService
+        return NomorSuratService::generateNomorBerurut($series, $targetDate, $jenisPenugasan, $usedBatch, $excludeId);
     }
 
     /**
@@ -467,7 +295,7 @@ class SppdNumberingService
     }
 
     /**
-     * Generate nomor SPPD baru (independen murni).
+     * Generate nomor SPPD baru.
      */
     public static function generateNextSppdNumber(
         ?string $parentSptNomor = null,
@@ -481,17 +309,11 @@ class SppdNumberingService
         return self::generateNextNumber('SPPD', $tglSurat, $manualNomor, $usedInCurrentBatch, $jenisPenugasan, $excludeId);
     }
 
-    /**
-     * Hitung nomor urut SPPD berikutnya (untuk compatibility).
-     */
     public static function getNextSppdSequence($year = null, bool $lock = false): int
     {
         return self::getMaxSequence('SPPD', $year) + 1;
     }
 
-    /**
-     * Hitung nomor urut SPT berikutnya (untuk compatibility).
-     */
     public static function getNextSptSequence($year = null, bool $lock = false): int
     {
         return self::getMaxSequence('SPT', $year) + 1;

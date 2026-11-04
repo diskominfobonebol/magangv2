@@ -118,9 +118,12 @@ class SuratSkController extends Controller
     /**
      * Simpan Surat SK baru ke database beserta upload file.
      */
+    /**
+     * Simpan Surat SK baru ke database beserta upload file.
+     */
     public function store(Request $request)
     {
-        $modeNomor = $request->input('mode_nomor', 'otomatis');
+        $modeNomor = $request->input('mode_nomor', 'manual');
 
         $rules = [
             'tanggal_sk' => 'required|date',
@@ -131,46 +134,66 @@ class SuratSkController extends Controller
                 'url',
                 'regex:/^(https?:\/\/)?([\w-]+\.)*drive\.google\.com\/.+$/i'
             ],
-            'file_sk'    => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
         ];
 
         if ($modeNomor === 'manual') {
-            $rules['nomor_manual'] = 'required|string|max:255|unique:surat_sks,nomor_sk';
+            $rules['nomor_manual'] = 'required|string|max:255';
         }
 
         $messages = [
             'nomor_manual.required'   => 'Nomor Surat SK manual wajib diisi jika memilih mode manual.',
-            'nomor_manual.unique'     => 'Nomor Surat SK ini sudah terdaftar di database. Silakan gunakan nomor lain.',
+            'nomor_manual.max'        => 'Nomor Surat SK manual maksimal 255 karakter.',
             'tanggal_sk.required'     => 'Tanggal SK wajib diisi.',
             'tentang.required'        => 'Hal / Tentang SK wajib diisi.',
             'link_google_drive.url'   => 'Link Google Drive harus berupa format URL yang valid (diawali https:// atau http://).',
             'link_google_drive.regex' => 'Link harus berupa tautan Google Drive yang valid (contoh: https://drive.google.com/...).',
-            'file_sk.mimes'           => 'File SK harus berformat PDF, Word (DOC/DOCX), atau Gambar (JPG/PNG).',
-            'file_sk.max'             => 'Ukuran file SK maksimal 10 MB.',
         ];
 
         $validated = $request->validate($rules, $messages);
 
         if ($modeNomor === 'manual') {
             $nomorSk = trim($validated['nomor_manual']);
+            $dupe = \App\Services\NomorSuratService::checkDuplicate($nomorSk);
+            if ($dupe) {
+                $tglStr = $dupe['tgl_surat'] ? " tanggal " . date('d F Y', strtotime($dupe['tgl_surat'])) : "";
+                return back()->withInput()->withErrors([
+                    'nomor_manual' => "Nomor surat '{$nomorSk}' sudah digunakan oleh {$dupe['kategori']}{$tglStr}. Silakan gunakan nomor lain."
+                ])->with('error', "Gagal menerbitkan surat: Nomor surat sudah terdaftar di database.");
+            }
         } else {
-            $nomorSk = SuratSk::generateNomor($validated['tanggal_sk']);
+            // Cek backdate: jika tanggal mundur, server menolak generate otomatis!
+            $eval = \App\Services\NomorSuratService::isBackdate('Surat SK', $validated['tanggal_sk']);
+            if ($eval['is_backdate']) {
+                return back()->withInput()->withErrors([
+                    'tanggal_sk' => 'Tanggal surat sebelum hari ini (backdate), nomor otomatis dinonaktifkan dan harus diisi manual.'
+                ])->with('error', 'Gagal menerbitkan surat: Tanggal surat sebelum hari ini (backdate), nomor wajib diisi secara manual.');
+            }
+            $nomorSk = \App\Services\NomorSuratService::generateNomorBerurut('Surat SK', $validated['tanggal_sk']);
         }
 
         $filePath = null;
-        if ($request->hasFile('file_sk')) {
-            $filePath = $request->file('file_sk')->store('surat-sk', 'public');
-        }
 
-        $sk = SuratSk::create([
-            'nomor_sk'          => $nomorSk,
-            'tanggal_sk'        => $validated['tanggal_sk'],
-            'tentang'           => $validated['tentang'],
-            'keterangan'        => $validated['keterangan'] ?? null,
-            'link_google_drive' => $validated['link_google_drive'] ?? null,
-            'file_sk'           => $filePath,
-            'created_by'        => Auth::id(),
-        ]);
+        $sk = DB::transaction(function() use ($validated, $nomorSk, $filePath) {
+            $sk = SuratSk::create([
+                'nomor_sk'          => $nomorSk,
+                'tanggal_sk'        => $validated['tanggal_sk'],
+                'tentang'           => $validated['tentang'],
+                'keterangan'        => $validated['keterangan'] ?? null,
+                'link_google_drive' => $validated['link_google_drive'] ?? null,
+                'file_sk'           => $filePath,
+                'created_by'        => Auth::id(),
+            ]);
+
+            \App\Services\NomorSuratService::registerNomor(
+                $sk->nomor_sk,
+                'Surat SK',
+                'surat_sks',
+                $sk->id,
+                $sk->tanggal_sk
+            );
+
+            return $sk;
+        });
 
         return redirect()->route('surat.sk')->with('success', 'Surat Keputusan (SK) nomor ' . $sk->nomor_sk . ' berhasil diterbitkan dan diarsipkan.');
     }
@@ -213,6 +236,98 @@ class SuratSkController extends Controller
     }
 
     /**
+     * Tampilkan form edit Surat SK (Wizard 2 Langkah bergaya SPT).
+     */
+    public function edit($id)
+    {
+        $sk = SuratSk::findOrFail($id);
+        $year = date('Y', strtotime($sk->tanggal_sk));
+        $nextSeq = \App\Services\NomorSuratService::getNextSequenceNumber('Surat SK', $year, $sk->id);
+        $nomorUrut = str_pad($nextSeq, 2, '0', STR_PAD_LEFT);
+
+        return view('surat-sk.edit', compact('sk', 'nomorUrut'));
+    }
+
+    /**
+     * Perbarui data Surat SK.
+     */
+    public function update(Request $request, $id)
+    {
+        $sk = SuratSk::findOrFail($id);
+        $modeNomor = $request->input('mode_nomor', 'manual');
+
+        $rules = [
+            'tanggal_sk' => 'required|date',
+            'tentang'    => 'required|string',
+            'keterangan' => 'nullable|string|max:500',
+            'link_google_drive' => [
+                'nullable',
+                'url',
+                'regex:/^(https?:\/\/)?([\w-]+\.)*drive\.google\.com\/.+$/i'
+            ],
+        ];
+
+        if ($modeNomor === 'manual') {
+            $rules['nomor_manual'] = 'required|string|max:255';
+        }
+
+        $messages = [
+            'nomor_manual.required'   => 'Nomor Surat SK manual wajib diisi jika memilih mode manual.',
+            'nomor_manual.max'        => 'Nomor Surat SK manual maksimal 255 karakter.',
+            'tanggal_sk.required'     => 'Tanggal SK wajib diisi.',
+            'tentang.required'        => 'Hal / Tentang SK wajib diisi.',
+            'link_google_drive.url'   => 'Link Google Drive harus berupa format URL yang valid (diawali https:// atau http://).',
+            'link_google_drive.regex' => 'Link harus berupa tautan Google Drive yang valid (contoh: https://drive.google.com/...).',
+        ];
+
+        $validated = $request->validate($rules, $messages);
+
+        if ($modeNomor === 'manual') {
+            $nomorSk = trim($validated['nomor_manual']);
+            $dupe = \App\Services\NomorSuratService::checkDuplicate($nomorSk, 'surat_sks', $sk->id);
+            if ($dupe) {
+                $tglStr = $dupe['tgl_surat'] ? " tanggal " . date('d F Y', strtotime($dupe['tgl_surat'])) : "";
+                return back()->withInput()->withErrors([
+                    'nomor_manual' => "Nomor surat '{$nomorSk}' sudah digunakan oleh {$dupe['kategori']}{$tglStr}. Silakan gunakan nomor lain."
+                ])->with('error', "Gagal memperbarui surat: Nomor surat sudah terdaftar di database.");
+            }
+        } else {
+            $eval = \App\Services\NomorSuratService::isBackdate('Surat SK', $validated['tanggal_sk'], $sk->id);
+            if ($eval['is_backdate']) {
+                return back()->withInput()->withErrors([
+                    'tanggal_sk' => 'Tanggal surat sebelum hari ini (backdate), nomor otomatis dinonaktifkan dan harus diisi manual.'
+                ])->with('error', 'Gagal memperbarui surat: Tanggal surat sebelum hari ini (backdate), nomor wajib diisi secara manual.');
+            }
+            $usedBatch = [];
+            $nomorSk = \App\Services\NomorSuratService::generateNomorBerurut('Surat SK', $validated['tanggal_sk'], null, $usedBatch, $sk->id);
+        }
+
+        $filePath = $sk->file_sk;
+
+        DB::transaction(function() use ($sk, $validated, $nomorSk, $filePath) {
+            $sk->update([
+                'nomor_sk'          => $nomorSk,
+                'tanggal_sk'        => $validated['tanggal_sk'],
+                'tentang'           => $validated['tentang'],
+                'keterangan'        => $validated['keterangan'] ?? null,
+                'link_google_drive' => $validated['link_google_drive'] ?? null,
+                'file_sk'           => $filePath,
+                'updated_by'        => Auth::id(),
+            ]);
+
+            \App\Services\NomorSuratService::registerNomor(
+                $sk->nomor_sk,
+                'Surat SK',
+                'surat_sks',
+                $sk->id,
+                $sk->tanggal_sk
+            );
+        });
+
+        return redirect()->route('surat.sk')->with('success', 'Surat Keputusan (SK) nomor ' . $sk->nomor_sk . ' berhasil diperbarui.');
+    }
+
+    /**
      * Hapus Surat SK beserta filenya.
      */
     public function destroy($id)
@@ -225,6 +340,8 @@ class SuratSkController extends Controller
         }
 
         $sk->delete();
+
+        \App\Services\NomorSuratService::releaseNomor('surat_sks', $id);
 
         return redirect()->route('surat.sk')->with('success', "Surat Keputusan (SK) nomor {$nomor} berhasil dihapus dari arsip.");
     }

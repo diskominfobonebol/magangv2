@@ -114,4 +114,17 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Two-Factor Authentication TOTP Window & Defaults
+    |--------------------------------------------------------------------------
+    |
+    | Window 2 allows +/- 1 minute time drift (2 intervals of 30 seconds before and after).
+    |
+    */
+
+    'totp_window' => (int) env('AUTH_TOTP_WINDOW', 2),
+
+    'default_password' => env('DEFAULT_USER_PASSWORD', 'Sinosip123!'),
+
 ];
