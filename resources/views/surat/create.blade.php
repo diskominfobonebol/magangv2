@@ -130,11 +130,14 @@
                     
                     <!-- Tab Pilihan -->
                     <div class="flex items-center gap-6 border-b border-blue-200/50 mb-3 text-xs font-bold">
-                        <button type="button" @click="modeNomor = 'otomatis'" 
-                                class="pb-2 flex items-center gap-1.5 transition-colors cursor-pointer"
-                                :class="modeNomor === 'otomatis' ? 'text-primary border-b-2 border-primary' : 'text-slate-400 hover:text-slate-600'">
+                        <button type="button" 
+                                @click="!isBackdate && (modeNomor = 'otomatis')" 
+                                :disabled="isBackdate"
+                                class="pb-2 flex items-center gap-1.5 transition-colors"
+                                :class="isBackdate ? 'text-slate-300 cursor-not-allowed opacity-60' : (modeNomor === 'otomatis' ? 'text-primary border-b-2 border-primary cursor-pointer' : 'text-slate-400 hover:text-slate-600 cursor-pointer')">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                             Otomatis
+                            <span x-show="isBackdate" x-cloak class="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-bold">Terkunci</span>
                         </button>
                         <button type="button" @click="modeNomor = 'manual'" 
                                 class="pb-2 flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -147,18 +150,18 @@
                     <!-- Dynamic Content Area -->
                     <div class="mt-1 space-y-2.5">
                         <!-- Notice Banner Backdate -->
-                        <div x-show="modeNomor === 'otomatis' && isBackdate && backdateNotice" x-cloak class="p-3.5 bg-amber-50/90 border border-amber-300/80 rounded-2xl text-xs text-amber-900 font-semibold flex items-start gap-2.5 shadow-sm">
-                            <svg class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <div x-show="isBackdate" x-cloak class="p-3.5 bg-amber-50/90 border border-amber-300/80 rounded-2xl text-xs text-amber-900 font-semibold flex items-start gap-2.5 shadow-sm">
+                            <svg class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                             <div class="flex-1">
-                                <span x-text="backdateNotice"></span>
+                                <span x-text="backdateNotice || 'Tanggal surat sebelum hari ini (backdate), nomor harus diisi manual.'">Tanggal surat sebelum hari ini (backdate), nomor harus diisi manual.</span>
                             </div>
                         </div>
 
                         <!-- Otomatis Preview -->
-                        <div x-show="modeNomor === 'otomatis'" class="bg-white/80 border border-blue-200/50 rounded-2xl p-4">
+                        <div x-show="modeNomor === 'otomatis' && !isBackdate" class="bg-white/80 border border-blue-200/50 rounded-2xl p-4">
                             <div class="flex items-center justify-between mb-1.5">
                                 <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Preview nomor surat:</p>
-                                <span x-show="isBackdate" x-cloak class="badge-amber text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-200">Disisipkan (Backdate)</span>
+                                <span class="badge-blue text-[10px] px-2 py-0.5 rounded-full font-bold">Otomatis Berurut</span>
                             </div>
                             
                             <div>
@@ -172,10 +175,30 @@
                         </div>
 
                         <!-- Manual Input -->
-                        <div x-show="modeNomor === 'manual'" style="display: none;">
-                            <input type="text" x-model="nomorManual" :placeholder="'Contoh: 555/KOMINFO-BB/SPT-DD/001a/IX/' + formatTahun()" class="form-input font-mono">
-                            <p class="mt-2 text-xs text-pink-accent font-semibold">
-                                Pastikan nomor manual sesuai format resmi (mendukung akhiran huruf jika disisipkan) dan tidak duplikat dengan arsip sebelumnya.
+                        <div x-show="modeNomor === 'manual'" style="display: none;" class="space-y-2">
+                            <input type="text" 
+                                   x-model="nomorManual" 
+                                   @input.debounce.400ms="checkDuplicateNomor()"
+                                   :placeholder="'Contoh: 555/KOMINFO-BB/SPT-DD/001/' + formatBulanRomawi() + '/' + formatTahun()" 
+                                   class="form-input font-mono font-semibold"
+                                   :class="{ '!border-rose-400 !bg-rose-50/30': isDuplicate }">
+                            
+                            <!-- Duplicate Warning -->
+                            <div x-show="isDuplicate" x-cloak class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium space-y-1">
+                                <div class="flex items-center gap-1.5 font-bold text-rose-800">
+                                    <svg class="w-4 h-4 text-rose-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    <span>Nomor Surat Sudah Digunakan</span>
+                                </div>
+                                <p>
+                                    Nomor <strong class="font-mono" x-text="nomorManual"></strong> sudah dipakai pada <strong x-text="duplicateInfo.kategori"></strong> tanggal <span x-text="duplicateInfo.tgl_surat"></span>.
+                                    <template x-if="duplicateInfo.link">
+                                        <a :href="duplicateInfo.link" target="_blank" class="text-primary font-bold underline ml-1">Lihat Surat &rarr;</a>
+                                    </template>
+                                </p>
+                            </div>
+
+                            <p class="text-xs text-slate-500">
+                                Nomor manual diterima apa adanya setelah trim dan wajib unik di seluruh kategori surat keluar.
                             </p>
                         </div>
 
@@ -219,25 +242,20 @@
         return {
             tanggal: @json(old('tgl_surat', session('s_tgl_surat', ''))),
             jenisSuratId: '2',
-            modeNomor: 'otomatis',
-            nomorManual: @json(old('nomor_surat', '')),
+            modeNomor: @json(old('mode_nomor', session('s_mode_nomor', 'otomatis'))),
+            nomorManual: {!! json_encode(old('nomor_surat_manual', session('s_nomor_surat_manual', old('nomor_surat', '')))) !!},
             nomorUrutSpt: @json($eval['next_seq'] ?? $nomorUrutSpt ?? $nomorUrut ?? '001'),
             isBackdate: @json((isset($eval['is_backdate']) && $eval['is_backdate']) ? true : false),
             backdateNotice: @json($eval['notice'] ?? ''),
-            predecessorNomor: @json($eval['predecessor_nomor'] ?? ''),
-            seriesSummary: @json($seriesSummary ?? null),
+            isDuplicate: false,
+            duplicateInfo: {
+                kategori: '',
+                tgl_surat: '',
+                link: ''
+            },
             errorTanggal: false,
             submitting: false,
 
-            getLetterSuffix(index) {
-                let result = '';
-                let n = index;
-                while (n >= 0) {
-                    result = String.fromCharCode(97 + (n % 26)) + result;
-                    n = Math.floor(n / 26) - 1;
-                }
-                return result;
-            },
             formatBulanRomawi() {
                 if (!this.tanggal) return 'MM';
                 const parts = this.tanggal.split('-');
@@ -254,68 +272,53 @@
                 if (!this.tanggal || this.tanggal.trim() === '') {
                     this.isBackdate = false;
                     this.backdateNotice = '';
-                    this.nomorUrutSpt = '...';
                     return;
                 }
                 const targetDate = this.tanggal;
-                const targetYear = parseInt(targetDate.split('-')[0], 10);
-                const bln = this.formatBulanRomawi();
-                const thn = this.formatTahun();
 
-                // 1. Pengecekan instan di client side jika summary tersedia
-                if (this.seriesSummary && this.seriesSummary.spt) {
-                    const sptData = this.seriesSummary.spt;
-                    const items = (sptData.items || []).filter(it => it.tgl_surat.startsWith(String(targetYear)) || it.nomor_surat.endsWith('/' + targetYear));
-                    
-                    let maxBaseSeq = 0;
-                    let highestSurat = null;
-                    if (items.length > 0) {
-                        maxBaseSeq = Math.max(...items.map(it => it.base_seq));
-                        const candidates = items.filter(it => it.base_seq === maxBaseSeq).sort((a, b) => b.tgl_surat.localeCompare(a.tgl_surat));
-                        highestSurat = candidates[0];
-                    }
-
-                    const highestDate = highestSurat ? highestSurat.tgl_surat : null;
-                    const isBack = (highestSurat !== null && highestDate !== null && targetDate < highestDate);
-
-                    if (isBack) {
-                        this.isBackdate = true;
-                        const predecessors = items.filter(it => it.tgl_surat <= targetDate).sort((a, b) => {
-                            if (a.tgl_surat !== b.tgl_surat) return b.tgl_surat.localeCompare(a.tgl_surat);
-                            if (a.base_seq !== b.base_seq) return b.base_seq - a.base_seq;
-                            return (b.letter || '').localeCompare(a.letter || '');
-                        });
-
-                        let pred = predecessors.length > 0 ? predecessors[0] : (items.slice().sort((a, b) => a.base_seq - b.base_seq)[0]);
-                        const baseSeq = pred ? pred.base_seq : 1;
-                        const paddedBase = String(baseSeq).padStart(3, '0');
-                        const predNomor = pred ? pred.nomor_surat : ('555/KOMINFO-BB/SPT-DD/' + paddedBase + '/' + bln + '/' + thn);
-
-                        const usedLetters = items.filter(it => it.base_seq === baseSeq).map(it => it.letter).filter(Boolean);
-                        let letterIdx = 0;
-                        while (usedLetters.includes(this.getLetterSuffix(letterIdx))) {
-                            letterIdx++;
-                        }
-                        const letter = this.getLetterSuffix(letterIdx);
-                        this.nomorUrutSpt = paddedBase + letter;
-                        const previewNomor = `555/KOMINFO-BB/SPT-DD/${paddedBase}${letter}/${bln}/${thn}`;
-                        this.backdateNotice = `Terdeteksi tanggal mundur (backdate) — nomor akan disisipkan sebagai anak dari nomor ${predNomor}, menjadi ${previewNomor}.`;
-                    } else {
-                        this.isBackdate = false;
-                        this.backdateNotice = '';
-                        this.nomorUrutSpt = String(maxBaseSeq + 1).padStart(3, '0');
-                    }
-                }
-
-                // 2. Sinkronisasi dengan backend API untuk verifikasi real-time
-                fetch(`/surat/api/check-backdate?series=SPT&tgl_surat=${targetDate}&jenis_penugasan=DD`)
+                // Cek backdate terpusat lewat API
+                fetch(`/surat/api/check-backdate-kategori?kategori=SPT&tgl_surat=${encodeURIComponent(targetDate)}`)
                     .then(res => res.json())
                     .then(data => {
                         if (data) {
+                            const wasBackdate = this.isBackdate;
                             this.isBackdate = Boolean(data.is_backdate);
-                            this.nomorUrutSpt = data.next_seq;
-                            this.backdateNotice = data.notice || '';
-                            this.predecessorNomor = data.predecessor_nomor || '';
+                            this.backdateNotice = data.notice || (this.isBackdate ? 'Tanggal surat sebelum hari ini (backdate), nomor harus diisi manual.' : '');
+                            if (this.isBackdate) {
+                                this.modeNomor = 'manual';
+                            } else {
+                                if (wasBackdate && this.modeNomor === 'manual') {
+                                    this.modeNomor = 'otomatis';
+                                }
+                                if (data.next_seq) {
+                                    this.nomorUrutSpt = data.next_seq;
+                                }
+                            }
+                        }
+                    })
+                    .catch(() => {});
+            },
+            checkDuplicateNomor() {
+                const val = (this.nomorManual || '').trim();
+                if (!val) {
+                    this.isDuplicate = false;
+                    this.duplicateInfo = { kategori: '', tgl_surat: '', link: '' };
+                    return;
+                }
+
+                fetch(`/surat/api/check-nomor-duplikat?nomor=${encodeURIComponent(val)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.is_duplicate) {
+                            this.isDuplicate = true;
+                            this.duplicateInfo = {
+                                kategori: (data.existing && data.existing.kategori) || 'Surat Keluar Lain',
+                                tgl_surat: (data.existing && data.existing.tgl_surat) ? data.existing.tgl_surat.split('-').reverse().join('/') : '-',
+                                link: (data.existing && data.existing.link) || ''
+                            };
+                        } else {
+                            this.isDuplicate = false;
+                            this.duplicateInfo = { kategori: '', tgl_surat: '', link: '' };
                         }
                     })
                     .catch(() => {});
@@ -326,6 +329,18 @@
                     if (e) e.preventDefault();
                     this.submitting = false;
                     return false;
+                }
+                if (this.modeNomor === 'manual') {
+                    if (!this.nomorManual || this.nomorManual.trim() === '') {
+                        if (e) e.preventDefault();
+                        alert('Nomor surat manual wajib diisi.');
+                        return false;
+                    }
+                    if (this.isDuplicate) {
+                        if (e) e.preventDefault();
+                        alert('Nomor surat sudah digunakan oleh dokumen lain. Silakan gunakan nomor lain.');
+                        return false;
+                    }
                 }
                 if (this.submitting) {
                     if (e) e.preventDefault();
@@ -343,6 +358,18 @@
                     this.submitting = false;
                     return false;
                 }
+                if (this.modeNomor === 'manual') {
+                    if (!this.nomorManual || this.nomorManual.trim() === '') {
+                        if (e) e.preventDefault();
+                        alert('Nomor surat manual wajib diisi.');
+                        return false;
+                    }
+                    if (this.isDuplicate) {
+                        if (e) e.preventDefault();
+                        alert('Nomor surat sudah digunakan oleh dokumen lain. Silakan gunakan nomor lain.');
+                        return false;
+                    }
+                }
                 if (this.submitting) {
                     if (e) e.preventDefault();
                     return false;
@@ -355,6 +382,9 @@
             init() {
                 if (this.tanggal) {
                     this.evaluateBackdate();
+                }
+                if (this.nomorManual) {
+                    this.checkDuplicateNomor();
                 }
             }
         };

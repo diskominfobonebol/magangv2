@@ -155,9 +155,14 @@ class PegawaiDashboardController extends Controller
         );
 
         // Hitung ulang progres otomatis setelah upload
-        $kenpa = KenpaBerkala::find($request->kenpa_berkala_id);
+        $kenpa = KenpaBerkala::with('pegawai')->find($request->kenpa_berkala_id);
         if ($kenpa) {
             $this->calculateAndSaveProgress($kenpa);
+
+            $jenisDokumen = JenisDokumen::find($request->jenis_dokumen_id);
+            if ($kenpa->pegawai && $jenisDokumen) {
+                \App\Services\NotificationService::notifyBerkasDiunggah($kenpa->pegawai, $kenpa, $jenisDokumen->nama_dokumen);
+            }
         }
 
         return redirect()->back()->with('success', 'Dokumen berhasil diunggah dan sedang menunggu verifikasi.');

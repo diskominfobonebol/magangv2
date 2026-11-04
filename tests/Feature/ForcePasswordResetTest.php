@@ -147,14 +147,24 @@ class ForcePasswordResetTest extends TestCase
             'password_confirmation' => 'adminNewPassword123',
         ]);
 
-        $response->assertRedirect(route('dashboard.master'));
+        // Aturan ketat: Setelah user berhasil mengganti password, SELALU langsung diarahkan ke Setup 2FA
+        $response->assertRedirect(route('2fa.setup'));
         $response->assertSessionHas('success');
 
         $admin->refresh();
         $this->assertFalse((bool)$admin->must_change_password);
         $this->assertTrue(Hash::check('adminNewPassword123', $admin->password));
 
-        // Setelah must_change_password = false, user bisa akses dashboard
+        // Karena 2FA belum diselesaikan, mengakses dashboard master akan dialihkan ke Setup 2FA
+        $this->actingAs($admin)
+            ->get('/dashboard/master')
+            ->assertRedirect(route('2fa.setup'));
+
+        // Jika 2FA diselesaikan dan session 2fa_passed aktif, baru bisa akses dashboard
+        session(['2fa_passed' => true]);
+        $admin->two_factor_confirmed_at = now();
+        $admin->save();
+
         $this->actingAs($admin)
             ->get('/dashboard/master')
             ->assertStatus(200);

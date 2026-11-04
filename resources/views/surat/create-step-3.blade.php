@@ -203,10 +203,33 @@
                             <span class="text-[11px] text-primary font-bold">{{ isset($selectedPegawais) ? $selectedPegawais->count() : 0 }} Personel</span>
                         </div>
                         
-                        <ul class="space-y-2.5">
+                        @php
+                            $isManualMode = (session('s_mode_nomor') === 'manual') || (isset($sppdEval['is_backdate']) && $sppdEval['is_backdate']);
+                        @endphp
+
+                        <ul class="space-y-3">
                             @if(isset($selectedPegawais) && $selectedPegawais->count() > 0)
                                 @foreach($selectedPegawais as $pegawai)
-                                <li class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl hover:bg-blue-50/40 transition-colors border border-blue-100/60 bg-slate-50/40">
+                                <li class="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-xl hover:bg-blue-50/40 transition-colors border border-blue-100/60 bg-slate-50/40"
+                                    x-data="{ 
+                                        manualVal: '{{ $sppdPreviews[$pegawai->id] ?? '' }}',
+                                        isDup: false,
+                                        dupMsg: '',
+                                        checkDup() {
+                                            const v = (this.manualVal || '').trim();
+                                            if (!v) { this.isDup = false; return; }
+                                            fetch(`/surat/api/check-nomor-duplikat?nomor=${encodeURIComponent(v)}`)
+                                                .then(r => r.json())
+                                                .then(d => {
+                                                    if (d && d.is_duplicate) {
+                                                        this.isDup = true;
+                                                        this.dupMsg = d.message || 'Nomor duplikat';
+                                                    } else {
+                                                        this.isDup = false;
+                                                    }
+                                                });
+                                        }
+                                    }">
                                     <div>
                                         <div class="flex items-center gap-2">
                                             <span class="font-bold text-navy text-xs">{{ $pegawai->nama }}</span>
@@ -216,12 +239,27 @@
                                         </div>
                                         <span class="text-slate-400 text-[11px] block mt-0.5">{{ ($pegawai->kategori_pegawai === 'P3K' ? 'No. Identitas: ' : 'NIP. ') . ($pegawai->nip ?: '-') }} &bull; {{ $pegawai->jabatan }}</span>
                                     </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-xs font-semibold text-slate-400">No. SPPD:</span>
-                                        <span class="badge-pink text-xs font-mono px-3 py-1 rounded-full font-bold">
-                                            {{ $sppdPreviews[$pegawai->id] ?? '090/KOMINFO-BB/SPPD/DD/001a/' . ($bln ?? 'IX') . '/' . ($thn ?? date('Y')) }}
-                                        </span>
-                                        <input type="hidden" name="nomor_sppd[{{ $pegawai->id }}]" value="{{ $sppdPreviews[$pegawai->id] ?? '' }}">
+                                    <div class="flex flex-col items-end gap-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-semibold text-slate-400">No. SPPD:</span>
+                                            @if($isManualMode)
+                                                <input type="text" 
+                                                       name="nomor_sppd[{{ $pegawai->id }}]" 
+                                                       x-model="manualVal"
+                                                       @input.debounce.400ms="checkDup()"
+                                                       placeholder="090/KOMINFO-BB/SPPD/DD/..."
+                                                       class="form-input text-xs font-mono !py-1 !px-2.5 w-64 font-bold"
+                                                       :class="{ '!border-rose-400 !bg-rose-50/40': isDup }">
+                                            @else
+                                                <span class="badge-pink text-xs font-mono px-3 py-1 rounded-full font-bold">
+                                                    {{ $sppdPreviews[$pegawai->id] ?? '090/KOMINFO-BB/SPPD/DD/001/' . ($bln ?? 'IX') . '/' . ($thn ?? date('Y')) }}
+                                                </span>
+                                                <input type="hidden" name="nomor_sppd[{{ $pegawai->id }}]" value="{{ $sppdPreviews[$pegawai->id] ?? '' }}">
+                                            @endif
+                                        </div>
+                                        <template x-if="isDup">
+                                            <span class="text-[11px] text-rose-600 font-bold" x-text="dupMsg"></span>
+                                        </template>
                                     </div>
                                 </li>
                                 @endforeach

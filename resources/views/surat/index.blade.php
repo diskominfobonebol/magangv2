@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Surat Keluar (SPT & SPPD)')
+@section('title', 'Surat Keluar')
 
 @section('content')
 <div class="max-w-7xl mx-auto space-y-6" x-data="suratIndexManager()">
@@ -10,8 +10,8 @@
         <!-- Header Utama & Tombol Aksi -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-                <h2 class="text-3xl font-extrabold text-navy">Surat Keluar (SPT & SPPD)</h2>
-                <p class="text-slate-500 mt-1 text-sm">Kelola dan telusuri arsip penerbitan nomor surat tugas (SPT) dan perjalanan dinas (SPPD).</p>
+                <h2 class="text-3xl font-extrabold text-navy">Surat Keluar</h2>
+                <p class="text-slate-500 mt-1 text-sm">Kelola dan telusuri arsip penerbitan nomor surat tugas keluar.</p>
             </div>
             <div class="flex items-center gap-3">
                 <a href="{{ route('surat.rekap.exportPdf', request()->query()) }}" target="_blank" class="btn-pill-secondary px-5 py-2.5 text-xs font-bold gap-2 shadow-sm flex items-center hover:text-primary transition-all">
@@ -19,16 +19,10 @@
                     Export Rekapitulasi PDF
                 </a>
                 @if(auth()->user()->role_id == 2)
-                <div class="flex items-center gap-2">
-                    <a href="{{ route('surat.create') }}" class="btn-pill-primary px-5 py-2.5 text-xs font-bold gap-2 shadow-lg shadow-blue-500/25 flex items-center" title="Buat Surat Perintah Tugas (SPT) Baru">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        + Buat SPT Baru
-                    </a>
-                    <button type="button" @click="openCreateSppdModal()" class="btn-pill-secondary px-5 py-2.5 text-xs font-bold gap-2 shadow-sm flex items-center bg-white text-pink-600 border border-pink-200 hover:bg-pink-50 hover:border-pink-300 hover:text-pink-700 cursor-pointer" title="Buat Surat Perintah Perjalanan Dinas (SPPD) Baru">
-                        <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                        + Buat SPPD
-                    </button>
-                </div>
+                <button type="button" @click="showKategoriModal = true" class="btn-pill-primary px-5 py-2.5 text-xs font-bold gap-2 shadow-lg shadow-blue-500/25 flex items-center cursor-pointer" title="Buat Surat Keluar Baru">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    + Buat Surat Keluar
+                </button>
                 @endif
             </div>
         </div>
@@ -59,54 +53,108 @@
         </div>
         @endif
 
-        <!-- Filter & Pencarian Form -->
-        <div class="bg-card-gradient p-6 rounded-3xl border border-blue-200/50 shadow-sm">
-            <form method="GET" action="{{ route('surat.index') }}" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                @if(request('filter_jenis'))
-                    <input type="hidden" name="filter_jenis" value="{{ request('filter_jenis') }}">
-                @endif
+        @php
+            $startOfMonthVal = now()->startOfMonth()->format('Y-m-d');
+            $endOfMonthVal = now()->endOfMonth()->format('Y-m-d');
 
-                <!-- Cari Nomor/Perihal (Col span 6) -->
-                <div class="md:col-span-6">
-                    <label class="form-label">Cari Nomor/Perihal</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                            <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            $reqJenis = request('filter_jenis', request('jenis'));
+            $reqYear = request('year');
+            $reqMonth = request('month');
+            $reqStart = request('start_date');
+            $reqEnd = request('end_date');
+
+            // Card 1: Total Nomor SPT aktif jika filter_jenis == 'SPT'
+            $isSptActive = ($reqJenis === 'SPT');
+
+            // Card 2: Total Nomor SPPD aktif jika filter_jenis == 'SPPD'
+            $isSppdActive = ($reqJenis === 'SPPD');
+
+            // Card 3: Total Surat Bulan Ini aktif jika rentang tanggal start & end sesuai bulan berjalan ini tanpa filter_jenis
+            $isMonthActive = (!$reqYear && !$reqMonth && !$reqJenis && $reqStart === $startOfMonthVal && $reqEnd === $endOfMonthVal);
+        @endphp
+
+        <!-- Filter & Pencarian Form -->
+        <div class="bg-card-gradient p-5 md:p-6 rounded-3xl border border-blue-200/50 shadow-sm">
+            <form id="filterForm" method="GET" action="{{ route('surat.keluar') }}" class="space-y-4">
+                <!-- Baris 1: Cari Nomor/Perihal & Kategori Surat -->
+                <div class="filter-top-row">
+                    <!-- Cari Nomor/Perihal (Lebar fleksibel & dominan) -->
+                    <div class="filter-col-search">
+                        <label class="form-label whitespace-nowrap">Cari Nomor/Perihal</label>
+                        <div class="relative w-full">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </div>
+                            <input type="text" name="search" placeholder="Cari nomor surat, perihal, personil..." value="{{ request('search') }}" class="form-input !pl-10 w-full">
                         </div>
-                        <input type="text" name="search" placeholder="Cari nomor surat, perihal, personil..." value="{{ request('search') }}" class="form-input !pl-10">
+                    </div>
+
+                    <!-- Kategori Surat -->
+                    <div class="filter-col-category">
+                        <label class="form-label whitespace-nowrap">Kategori Surat</label>
+                        <select name="filter_jenis" onchange="this.form.submit()" class="form-input cursor-pointer w-full">
+                            <option value="">Semua Kategori</option>
+                            <option value="SPT" {{ request('filter_jenis', request('jenis')) === 'SPT' ? 'selected' : '' }}>SPT</option>
+                            <option value="SPPD" {{ request('filter_jenis', request('jenis')) === 'SPPD' ? 'selected' : '' }}>SPPD</option>
+                            <option value="Surat Telaah" {{ request('filter_jenis', request('jenis')) === 'Surat Telaah' ? 'selected' : '' }}>Surat Telaah</option>
+                            <option value="Surat SK" {{ request('filter_jenis', request('jenis')) === 'Surat SK' ? 'selected' : '' }}>Surat SK</option>
+                            <option value="Lainnya" {{ request('filter_jenis', request('jenis')) === 'Lainnya' ? 'selected' : '' }}>Lainnya</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Tahun Arsip (Col span 2) -->
-                <div class="md:col-span-2">
-                    <label class="form-label">Tahun Arsip</label>
-                    <select name="year" onchange="this.form.submit()" class="form-input">
-                        <option value="">Semua Tahun</option>
-                        @php
-                            $currentYear = date('Y');
-                            $startYear = $currentYear - 5;
-                        @endphp
-                        @for ($y = $currentYear; $y >= $startYear; $y--)
-                            <option value="{{ $y }}" {{ request('year') == $y ? 'selected' : '' }}>{{ $y }}</option>
-                        @endfor
-                    </select>
+                <!-- Baris 2: Bulan, Tahun, Dari Tanggal, Sampai Tanggal -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                    <!-- Bulan -->
+                    <div>
+                        <label class="form-label whitespace-nowrap">Bulan</label>
+                        <select name="month" id="filterMonthSelect" onchange="handleMonthYearChange()" class="form-input cursor-pointer">
+                            <option value="">Semua Bulan</option>
+                            @php
+                                $namaBulan = [
+                                    1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+                                    5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+                                    9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+                                ];
+                            @endphp
+                            @foreach($namaBulan as $mNum => $mNama)
+                                <option value="{{ $mNum }}" {{ (string)request('month') === (string)$mNum ? 'selected' : '' }}>{{ $mNama }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Tahun Arsip -->
+                    <div>
+                        <label class="form-label whitespace-nowrap">Tahun</label>
+                        <select name="year" id="filterYearSelect" onchange="handleMonthYearChange()" class="form-input cursor-pointer">
+                            <option value="">Semua Tahun</option>
+                            @php
+                                $currentYear = date('Y');
+                                $startYear = $currentYear - 5;
+                            @endphp
+                            @for ($y = $currentYear; $y >= $startYear; $y--)
+                                <option value="{{ $y }}" {{ request('year') == $y ? 'selected' : '' }}>{{ $y }}</option>
+                            @endfor
+                        </select>
+                    </div>
+
+                    <!-- Dari Tanggal -->
+                    <div>
+                        <label class="form-label whitespace-nowrap">Dari Tanggal</label>
+                        <input type="date" name="start_date" id="filterStartDate" onchange="handleDateDirectChange()" value="{{ request('start_date') }}" class="form-input cursor-pointer">
+                    </div>
+
+                    <!-- Sampai Tanggal -->
+                    <div>
+                        <label class="form-label whitespace-nowrap">Sampai Tanggal</label>
+                        <input type="date" name="end_date" id="filterEndDate" onchange="handleDateDirectChange()" value="{{ request('end_date') }}" class="form-input cursor-pointer">
+                    </div>
                 </div>
 
-                <!-- Dari Tanggal (Col span 2) -->
-                <div class="md:col-span-2">
-                    <label class="form-label">Dari Tanggal</label>
-                    <input type="date" name="start_date" onchange="this.form.submit()" value="{{ request('start_date') }}" class="form-input">
-                </div>
-
-                <!-- Sampai Tanggal (Col span 2) -->
-                <div class="md:col-span-2">
-                    <label class="form-label">Sampai Tanggal</label>
-                    <input type="date" name="end_date" onchange="this.form.submit()" value="{{ request('end_date') }}" class="form-input">
-                </div>
-
-                <div class="md:col-span-12 flex justify-between items-center pt-1">
-                    <span class="text-xs text-slate-400 font-medium">Tekan <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono">Enter</kbd> atau pilih opsi untuk menyaring data.</span>
-                    <a href="{{ route('surat.index') }}" class="text-xs text-primary hover:underline font-bold flex items-center gap-1">
+                <!-- Baris Bawah: Petunjuk & Reset Filter -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-2 border-t border-blue-100/60">
+                    <span class="text-xs text-slate-500 font-medium">Tekan <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono text-slate-600 shadow-sm">Enter</kbd> atau klik salah satu kartu statistik di bawah untuk filter cepat.</span>
+                    <a href="{{ route('surat.keluar') }}" class="text-xs text-primary hover:text-blue-700 hover:underline font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                         Reset Filter
                     </a>
@@ -114,88 +162,97 @@
             </form>
         </div>
 
-        <!-- Kotak Ringkasan Metrik Rekap -->
+        <!-- Kotak Ringkasan Metrik Rekap (Quick Filter Cards) -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Card Total Nomor SPT (Interaktif Filter) -->
-            @php
-                $isSptActive = (request('filter_jenis') == 'SPT' || request('jenis') == 'SPT');
-                $sptUrl = $isSptActive ? route('surat.index', request()->except(['filter_jenis', 'jenis', 'page'])) : route('surat.index', array_merge(request()->except('page'), ['filter_jenis' => 'SPT']));
-            @endphp
-            <a href="{{ $sptUrl }}" 
-               class="bg-card-gradient rounded-3xl p-6 shadow-xl shadow-blue-900/5 border card-interactive group relative overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl cursor-pointer block {{ $isSptActive ? 'border-primary ring-2 ring-blue-500/50 bg-blue-50/40 shadow-blue-500/20' : 'border-blue-200/50 hover:border-blue-400 hover:shadow-blue-500/15' }}"
-               title="{{ $isSptActive ? 'Klik untuk membatalkan filter SPT' : 'Klik untuk menyaring baris yang memiliki Nomor Surat SPT' }}">
+            <!-- Card Total Nomor SPT (Filter Cepat) -->
+            <button type="button" 
+                    onclick="applyQuickFilter('spt')" 
+                    class="w-full text-left rounded-3xl p-6 transition-all duration-300 transform hover:-translate-y-1.5 focus:outline-none cursor-pointer relative overflow-hidden group {{ $isSptActive ? 'bg-gradient-to-br from-blue-50/90 to-blue-100/50 border-2 border-primary shadow-xl shadow-blue-500/15 ring-2 ring-primary/20' : 'bg-card-gradient border border-blue-200/50 hover:border-blue-400 shadow-xl shadow-blue-900/5' }}"
+                    title="{{ $isSptActive ? 'Filter aktif. Klik untuk membatalkan filter SPT' : 'Klik untuk menyaring seluruh data Surat Perintah Tugas (SPT)' }}">
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <p class="text-xs font-bold uppercase tracking-wider transition-colors {{ $isSptActive ? 'text-primary' : 'text-slate-400 group-hover:text-primary' }}">Total Nomor SPT</p>
+                            <p class="text-xs font-bold uppercase tracking-wider {{ $isSptActive ? 'text-primary' : 'text-slate-400 group-hover:text-primary' }} transition-colors">Total Nomor SPT</p>
                             @if($isSptActive)
-                                <span class="badge-blue text-[10px] px-2 py-0.5 rounded-full font-bold">Filter Aktif</span>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary text-white shadow-xs">
+                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                Filter Aktif
+                            </span>
                             @endif
                         </div>
-                        <h3 class="text-3xl font-extrabold text-navy group-hover:text-primary transition-colors">{{ $totalSpt ?? 0 }}</h3>
+                        <h3 class="text-3xl font-extrabold {{ $isSptActive ? 'text-primary' : 'text-navy group-hover:text-primary' }} transition-colors">{{ $totalSpt ?? 0 }}</h3>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl group-hover:scale-110 transition-all duration-300 shadow-sm {{ $isSptActive ? 'bg-primary text-white scale-105' : 'bg-blue-50 text-primary group-hover:bg-primary group-hover:text-white' }}">
+                    <div class="w-12 h-12 rounded-2xl {{ $isSptActive ? 'bg-primary text-white scale-105 shadow-md shadow-blue-500/30' : 'bg-blue-50 text-primary group-hover:bg-primary group-hover:text-white' }} flex items-center justify-center font-bold text-xl transition-all duration-300 shadow-sm">
                         📄
                     </div>
                 </div>
-                <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-500">
-                    <span class="font-medium text-slate-600">Surat Perintah Tugas</span>
-                    <span class="text-primary font-bold {{ $isSptActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100' }} transition-opacity flex items-center gap-1">
-                        {{ $isSptActive ? '✕ Batalkan Filter' : 'Filter SPT →' }}
+                <div class="mt-4 pt-3 flex items-center justify-end text-xs text-slate-500 border-t {{ $isSptActive ? 'border-primary/20' : 'border-blue-100/50' }}">
+                    <span class="{{ $isSptActive ? 'text-primary font-extrabold' : 'text-primary font-bold' }} flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                        {{ $isSptActive ? 'Filter SPT Aktif' : 'Semua SPT' }}
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </span>
                 </div>
-            </a>
+            </button>
 
-            <!-- Card Total Nomor SPPD (Interaktif Filter) -->
-            @php
-                $isSppdActive = (request('filter_jenis') == 'SPPD' || request('jenis') == 'SPPD');
-                $sppdUrl = $isSppdActive ? route('surat.index', request()->except(['filter_jenis', 'jenis', 'page'])) : route('surat.index', array_merge(request()->except('page'), ['filter_jenis' => 'SPPD']));
-            @endphp
-            <a href="{{ $sppdUrl }}" 
-               class="bg-card-gradient rounded-3xl p-6 shadow-xl shadow-blue-900/5 border card-interactive group relative overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl cursor-pointer block {{ $isSppdActive ? 'border-pink-500 ring-2 ring-pink-500/50 bg-pink-50/40 shadow-pink-500/20' : 'border-blue-200/50 hover:border-pink-400 hover:shadow-pink-500/15' }}"
-               title="{{ $isSppdActive ? 'Klik untuk membatalkan filter SPPD' : 'Klik untuk menyaring baris yang memiliki Nomor Surat SPPD' }}">
+            <!-- Card Total Nomor SPPD (Filter Cepat) -->
+            <button type="button" 
+                    onclick="applyQuickFilter('sppd')" 
+                    class="w-full text-left rounded-3xl p-6 transition-all duration-300 transform hover:-translate-y-1.5 focus:outline-none cursor-pointer relative overflow-hidden group {{ $isSppdActive ? 'bg-gradient-to-br from-pink-50/90 to-rose-100/50 border-2 border-pink-500 shadow-xl shadow-pink-500/15 ring-2 ring-pink-500/20' : 'bg-card-gradient border border-blue-200/50 hover:border-pink-300 shadow-xl shadow-blue-900/5' }}"
+                    title="{{ $isSppdActive ? 'Filter aktif. Klik untuk membatalkan filter SPPD' : 'Klik untuk menyaring SPT yang memiliki SPPD terkait' }}">
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <p class="text-xs font-bold uppercase tracking-wider transition-colors {{ $isSppdActive ? 'text-pink-600' : 'text-slate-400 group-hover:text-pink-500' }}">Total Nomor SPPD</p>
+                            <p class="text-xs font-bold uppercase tracking-wider {{ $isSppdActive ? 'text-pink-600' : 'text-slate-400 group-hover:text-pink-600' }} transition-colors">Total Nomor SPPD</p>
                             @if($isSppdActive)
-                                <span class="bg-pink-100 text-pink-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Filter Aktif</span>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-pink-500 text-white shadow-xs">
+                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                Filter Aktif
+                            </span>
                             @endif
                         </div>
-                        <h3 class="text-3xl font-extrabold text-navy group-hover:text-pink-600 transition-colors">{{ $totalSppd ?? 0 }}</h3>
+                        <h3 class="text-3xl font-extrabold {{ $isSppdActive ? 'text-pink-600' : 'text-navy group-hover:text-pink-600' }} transition-colors">{{ $totalSppd ?? 0 }}</h3>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl group-hover:scale-110 transition-all duration-300 shadow-sm {{ $isSppdActive ? 'bg-pink-500 text-white scale-105' : 'bg-pink-50 text-pink-500 group-hover:bg-pink-500 group-hover:text-white' }}">
+                    <div class="w-12 h-12 rounded-2xl {{ $isSppdActive ? 'bg-pink-500 text-white scale-105 shadow-md shadow-pink-500/30' : 'bg-pink-50 text-pink-500 group-hover:bg-pink-500 group-hover:text-white' }} flex items-center justify-center font-bold text-xl transition-all duration-300 shadow-sm">
                         ⚡
                     </div>
                 </div>
-                <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-500">
-                    <span class="font-medium text-slate-600">Surat Perjalanan Dinas</span>
-                    <span class="text-pink-600 font-bold {{ $isSppdActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100' }} transition-opacity flex items-center gap-1">
-                        {{ $isSppdActive ? '✕ Batalkan Filter' : 'Filter SPPD →' }}
+                <div class="mt-4 pt-3 flex items-center justify-end text-xs text-slate-500 border-t {{ $isSppdActive ? 'border-pink-200' : 'border-blue-100/50' }}">
+                    <span class="{{ $isSppdActive ? 'text-pink-600 font-extrabold' : 'text-pink-600 font-bold' }} flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                        {{ $isSppdActive ? 'Filter SPPD Aktif' : 'Disertai SPPD' }}
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </span>
                 </div>
-            </a>
+            </button>
 
-            <!-- Card Total Surat Bulan Ini -->
-            <a href="{{ route('surat.index', ['start_date' => now()->startOfMonth()->toDateString(), 'end_date' => now()->endOfMonth()->toDateString()]) }}" 
-               class="bg-card-gradient rounded-3xl p-6 shadow-xl shadow-blue-900/5 border border-blue-200/50 card-interactive group relative overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:border-indigo-400 hover:shadow-2xl hover:shadow-indigo-500/15 block cursor-pointer"
-               title="Klik untuk menyaring surat pada bulan {{ \Carbon\Carbon::now()->translatedFormat('F Y') }}">
+            <!-- Card Total Surat Bulan Ini (Filter Cepat) -->
+            <button type="button" 
+                    onclick="applyQuickFilter('month')" 
+                    class="w-full text-left rounded-3xl p-6 transition-all duration-300 transform hover:-translate-y-1.5 focus:outline-none cursor-pointer relative overflow-hidden group {{ $isMonthActive ? 'bg-gradient-to-br from-indigo-50/90 to-indigo-100/50 border-2 border-indigo-500 shadow-xl shadow-indigo-500/15 ring-2 ring-indigo-500/20' : 'bg-card-gradient border border-blue-200/50 hover:border-indigo-300 shadow-xl shadow-blue-900/5' }}"
+                    title="{{ $isMonthActive ? 'Filter aktif. Klik untuk membatalkan filter bulan ini' : 'Klik untuk menyaring surat pada bulan ' . \Carbon\Carbon::now()->translatedFormat('F Y') }}">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-indigo-500 transition-colors">Total Surat Bulan Ini</p>
-                        <h3 class="text-3xl font-extrabold text-navy group-hover:text-indigo-600 transition-colors">{{ $totalBulanIni ?? 0 }}</h3>
+                        <div class="flex items-center gap-2 mb-1">
+                            <p class="text-xs font-bold uppercase tracking-wider {{ $isMonthActive ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-600' }} transition-colors">Total Surat Bulan Ini</p>
+                            @if($isMonthActive)
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500 text-white shadow-xs">
+                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                Filter Aktif
+                            </span>
+                            @endif
+                        </div>
+                        <h3 class="text-3xl font-extrabold {{ $isMonthActive ? 'text-indigo-600' : 'text-navy group-hover:text-indigo-600' }} transition-colors">{{ $totalBulanIni ?? 0 }}</h3>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center font-bold text-xl group-hover:scale-110 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300 shadow-sm">
+                    <div class="w-12 h-12 rounded-2xl {{ $isMonthActive ? 'bg-indigo-500 text-white scale-105 shadow-md shadow-indigo-500/30' : 'bg-indigo-50 text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white' }} flex items-center justify-center font-bold text-xl transition-all duration-300 shadow-sm">
                         📅
                     </div>
                 </div>
-                <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-500">
-                    <span class="font-medium text-slate-600">Periode {{ \Carbon\Carbon::now()->translatedFormat('F Y') }}</span>
-                    <span class="text-indigo-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                        Lihat Filter &rarr;
+                <div class="mt-4 pt-3 flex items-center justify-end text-xs text-slate-500 border-t {{ $isMonthActive ? 'border-indigo-200' : 'border-blue-100/50' }}">
+                    <span class="{{ $isMonthActive ? 'text-indigo-600 font-extrabold' : 'text-indigo-600 font-bold' }} flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                        {{ $isMonthActive ? 'Bulan Ini Aktif' : 'Bulan Berjalan' }}
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </span>
                 </div>
-            </a>
+            </button>
         </div>
 
         <!-- TABEL REKAPITULASI KESELURUHAN -->
@@ -217,10 +274,9 @@
             
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="border-b border-blue-100 text-xs font-bold text-slate-400 uppercase bg-white/40">
+                                            <tr class="border-b border-blue-100 text-xs font-bold text-slate-400 uppercase bg-white/40">
                             <th class="py-3.5 px-3">Tanggal Surat</th>
-                            <th class="py-3.5 px-3">Nomor Surat SPT</th>
+                            <th class="py-3.5 px-3">Nomor Surat</th>
                             <th class="py-3.5 px-3">Nomor Surat SPPD</th>
                             <th class="py-3.5 px-3">Perihal / Uraian Tugas</th>
                             <th class="py-3.5 px-3">Tujuan</th>
@@ -232,11 +288,15 @@
                     <tbody class="text-sm">
                         @forelse($surats ?? [] as $item)
                         @php
-                            // Siapkan data JSON untuk panel "Lihat"
-                            $isSppdItem = ($item->jenis_surat_id == 1 || str_starts_with($item->nomor_surat, '090/'));
+                            $sourceType = $item->source_type ?? ($item->jenis_surat_id == 1 ? 'sppd' : 'spt');
+                            $isSppdItem = ($sourceType === 'sppd');
+                            $isTelaah = ($sourceType === 'telaah');
+                            $isSk = ($sourceType === 'sk');
+                            $isLainnya = ($sourceType === 'lainnya');
+                            $isSpt = ($sourceType === 'spt');
                             
                             $directSppds = [];
-                            if ($item->has_sppd && $item->pegawais) {
+                            if (!$isTelaah && !$isSk && !$isLainnya && $item->has_sppd && $item->pegawais) {
                                 foreach ($item->pegawais as $p) {
                                     if (!empty($p->pivot->nomor_sppd) && $p->pivot->nomor_sppd !== '-') {
                                         $directSppds[] = [
@@ -250,7 +310,7 @@
                             }
 
                             $childSppds = [];
-                            if ($item->children && $item->children->count() > 0) {
+                            if (!$isTelaah && !$isSk && !$isLainnya && $item->children && $item->children->count() > 0) {
                                 foreach ($item->children as $child) {
                                     if ($child->pegawais && $child->pegawais->count() > 0) {
                                         foreach ($child->pegawais as $cp) {
@@ -276,7 +336,7 @@
                             }
 
                             $allSppdList = [];
-                            if ($item->has_sppd && $item->pegawais) {
+                            if (!$isTelaah && !$isSk && !$isLainnya && $item->has_sppd && $item->pegawais) {
                                 foreach ($item->pegawais as $p) {
                                     if (!empty($p->pivot->nomor_sppd) && $p->pivot->nomor_sppd !== '-') {
                                         $allSppdList[] = [
@@ -293,7 +353,7 @@
                                 }
                             }
 
-                            if ($item->children && $item->children->count() > 0) {
+                            if (!$isTelaah && !$isSk && !$isLainnya && $item->children && $item->children->count() > 0) {
                                 foreach ($item->children as $child) {
                                     if ($child->pegawais && $child->pegawais->count() > 0) {
                                         foreach ($child->pegawais as $cp) {
@@ -326,65 +386,100 @@
                                 }
                             }
 
-                            $jsonData = [
-                                'id' => $item->id,
-                                'nomor_surat' => $item->nomor_surat,
-                                'tgl_surat' => $item->tgl_surat,
-                                'tgl_formatted' => \Carbon\Carbon::parse($item->tgl_surat)->translatedFormat('d F Y'),
-                                'perihal' => $item->perihal,
-                                'tujuan' => $item->tujuan,
-                                'uraian' => $item->uraian ?? '',
-                                'keterangan' => $item->keterangan ?? '',
-                                'has_sppd' => (int)$item->has_sppd,
-                                'status' => $item->status ?? 'Terbit',
-                                'jenis' => optional($item->jenisSurat)->nama_jenis ?? ($isSppdItem ? 'SPPD' : 'SPT'),
-                                'is_sppd' => $isSppdItem,
-                                'parent_id' => $item->parent_id,
-                                'parent_nomor' => $item->parent ? $item->parent->nomor_surat : null,
-                                'parent_tgl' => $item->parent ? \Carbon\Carbon::parse($item->parent->tgl_surat)->translatedFormat('d F Y') : null,
-                                'parent_uraian' => $item->parent ? ($item->parent->uraian ?: $item->parent->perihal) : null,
-                                'spt_induk_manual' => $item->spt_induk_manual,
-                                'is_spt_manual' => !empty($item->spt_induk_manual) && empty($item->parent_id),
-                                'file_name' => $item->file_name,
-                                'file_path' => $item->file_path,
-                                'google_drive_file_id' => $item->google_drive_file_id,
-                                'google_drive_url' => $item->link_google_drive ?: $item->google_drive_url,
-                                'link_google_drive' => $item->link_google_drive,
-                                'drive_upload_status' => $item->drive_upload_status ?? 'none',
-                                'all_sppds' => $allSppdList,
-                                'pegawais' => $item->pegawais->map(function($p) use ($item) {
-                                    return [
+                            $pegawaisArray = [];
+                            if ($item->pegawais && is_iterable($item->pegawais)) {
+                                foreach ($item->pegawais as $p) {
+                                    $pegawaisArray[] = [
                                         'id' => $p->id,
                                         'nama' => $p->nama,
-                                        'nip' => $p->nip,
-                                        'jabatan' => $p->jabatan,
-                                        'nomor_sppd' => $p->pivot->nomor_sppd ?? ''
+                                        'nip' => $p->nip ?? '',
+                                        'jabatan' => $p->jabatan ?? '',
+                                        'nomor_sppd' => isset($p->pivot) ? ($p->pivot->nomor_sppd ?? '') : ''
                                     ];
-                                })->values()->toArray(),
-                                'children' => $item->children ? $item->children->map(function($c) {
-                                    return [
+                                }
+                            }
+
+                            $childrenArray = [];
+                            if ($item->children && is_iterable($item->children)) {
+                                foreach ($item->children as $c) {
+                                    $cPegs = [];
+                                    if ($c->pegawais && is_iterable($c->pegawais)) {
+                                        foreach ($c->pegawais as $cp) {
+                                            $cPegs[] = [
+                                                'nama' => $cp->nama,
+                                                'nip' => $cp->nip ?? '',
+                                                'nomor_sppd' => isset($cp->pivot) ? ($cp->pivot->nomor_sppd ?? '') : ''
+                                            ];
+                                        }
+                                    }
+                                    $childrenArray[] = [
                                         'id' => $c->id,
                                         'nomor_surat' => $c->nomor_surat,
                                         'tgl_surat' => $c->tgl_surat,
-                                        'tujuan' => $c->tujuan,
-                                        'pegawais' => $c->pegawais->map(function($cp) {
-                                            return [
-                                                'nama' => $cp->nama,
-                                                'nip' => $cp->nip,
-                                                'nomor_sppd' => $cp->pivot->nomor_sppd ?? ''
-                                            ];
-                                        })->values()->toArray()
+                                        'tujuan' => $c->tujuan ?? '',
+                                        'pegawais' => $cPegs
                                     ];
-                                })->values()->toArray() : []
+                                }
+                            }
+
+                            $jsonData = [
+                                'id' => $item->id,
+                                'nomor_surat' => $item->nomor_surat ?? '-',
+                                'tgl_surat' => $item->tgl_surat ?? null,
+                                'tgl_formatted' => !empty($item->tgl_surat) ? \Carbon\Carbon::parse($item->tgl_surat)->translatedFormat('d F Y') : '-',
+                                'perihal' => $item->perihal ?? '',
+                                'tujuan' => $item->tujuan ?? '-',
+                                'uraian' => $item->uraian ?? '',
+                                'keterangan' => $item->keterangan ?? '',
+                                'has_sppd' => (int)($item->has_sppd ?? 0),
+                                'status' => $item->status ?? 'Terbit',
+                                'jenis' => $item->kategori_badge ?? ($isSppdItem ? 'SPPD' : 'SPT'),
+                                'is_sppd' => $isSppdItem,
+                                'parent_id' => $item->parent_id ?? null,
+                                'parent_nomor' => isset($item->parent) && $item->parent ? $item->parent->nomor_surat : null,
+                                'parent_tgl' => isset($item->parent) && $item->parent ? (!empty($item->parent->tgl_surat) ? \Carbon\Carbon::parse($item->parent->tgl_surat)->translatedFormat('d F Y') : null) : null,
+                                'parent_uraian' => isset($item->parent) && $item->parent ? ($item->parent->uraian ?: $item->parent->perihal) : null,
+                                'spt_induk_manual' => $item->spt_induk_manual ?? null,
+                                'is_spt_manual' => !empty($item->spt_induk_manual) && empty($item->parent_id),
+                                'file_name' => $item->file_name ?? null,
+                                'file_path' => $item->file_path ?? null,
+                                'google_drive_file_id' => $item->google_drive_file_id ?? null,
+                                'google_drive_url' => !empty($item->google_drive_url) ? $item->google_drive_url : ($item->link_google_drive ?? null),
+                                'link_google_drive' => $item->link_google_drive ?? null,
+                                'drive_upload_status' => $item->drive_upload_status ?? 'none',
+                                'all_sppds' => $allSppdList,
+                                'pegawais' => $pegawaisArray,
+                                'children' => $childrenArray
                             ];
                         @endphp
                         <tr class="hover:bg-blue-50/30 transition-colors">
                             <td class="py-4 px-3 font-semibold text-slate-600 text-xs whitespace-nowrap">
-                                {{ \Carbon\Carbon::parse($item->tgl_surat)->translatedFormat('d M Y') }}
+                                {{ !empty($item->tgl_surat) ? \Carbon\Carbon::parse($item->tgl_surat)->translatedFormat('d M Y') : '-' }}
                             </td>
-                            <td class="py-4 px-3 font-mono font-bold text-primary text-xs whitespace-nowrap">
-                                @if($isSppdItem)
-                                    {{-- Jika baris ini adalah SPPD mandiri (legacy) --}}
+                            <td class="py-4 px-3 font-mono font-bold text-xs whitespace-nowrap">
+                                <div class="mb-1">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase {{ $item->kategori_color ?? 'bg-blue-100 text-primary border border-blue-200' }}">
+                                        {{ $item->kategori_badge ?? 'SPT' }}
+                                    </span>
+                                    @if(($item->status ?? 'Terbit') === 'Draft')
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">Draft</span>
+                                    @endif
+                                </div>
+
+                                @if($isTelaah)
+                                    <a href="{{ $item->show_route ?? route('surat.telaah.show', $item->id) }}" class="text-primary hover:underline">
+                                        {{ $item->nomor_surat }}
+                                    </a>
+                                @elseif($isSk)
+                                    <a href="{{ $item->show_route ?? route('surat.sk.show', $item->id) }}" class="text-primary hover:underline">
+                                        {{ $item->nomor_surat }}
+                                    </a>
+                                @elseif($isLainnya)
+                                    <span class="text-slate-800">
+                                        {{ $item->nomor_surat }}
+                                    </span>
+                                @elseif($isSppdItem)
+                                    {{-- Jika baris ini adalah SPPD --}}
                                     <div id="spt-link-row-{{ $item->id }}">
                                         @if($item->parent_id && $item->parent)
                                             <div class="flex items-center gap-1.5">
@@ -399,26 +494,25 @@
                                                 <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title="SPT Induk diketik manual / di luar sistem">Manual</span>
                                             </div>
                                         @else
-                                            <span class="text-amber-600 font-bold text-[10px] bg-amber-50 px-2 py-0.5 rounded border border-amber-200" title="Belum terhubung ke SPT Induk">Belum Ada Induk</span>
+                                            <span class="text-primary font-bold">{{ $item->nomor_surat }}</span>
                                         @endif
                                     </div>
                                 @else
                                     {{-- Jika baris ini adalah SPT --}}
                                     <div class="flex items-center gap-1.5">
-                                        <a href="{{ route('surat.show', $item->id) }}" class="hover:underline">
+                                        <a href="{{ route('surat.show', $item->id) }}" class="text-primary hover:underline">
                                             {{ $item->nomor_surat }}
                                         </a>
                                         @if($item->children && $item->children->count() > 0)
                                             <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-primary border border-blue-200" title="SPT Induk (Memiliki {{ $item->children->count() }} Dokumen SPPD Susulan)">Induk</span>
                                         @endif
-                                        @if(($item->status ?? 'Terbit') === 'Draft')
-                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">Draft</span>
-                                        @endif
                                     </div>
                                 @endif
                             </td>
                             <td class="py-4 px-3 font-mono font-bold text-xs">
-                                @if(count($directSppds) > 0 || count($childSppds) > 0)
+                                @if($isTelaah || $isSk || $isLainnya)
+                                    <span class="text-slate-400 font-semibold px-2">-</span>
+                                @elseif(count($directSppds) > 0 || count($childSppds) > 0)
                                     <ul class="space-y-1.5">
                                         @foreach($directSppds as $sppd)
                                             <li>
@@ -450,6 +544,8 @@
                             <td class="py-4 px-3 text-navy font-semibold text-xs max-w-xs">
                                 @if(!empty($item->uraian))
                                     <div class="line-clamp-2 leading-relaxed font-medium" title="{{ $item->uraian }}">{{ $item->uraian }}</div>
+                                @elseif(!empty($item->perihal))
+                                    <div class="line-clamp-2 leading-relaxed font-medium" title="{{ $item->perihal }}">{{ $item->perihal }}</div>
                                 @elseif(($item->status ?? 'Terbit') === 'Draft')
                                     <div class="text-slate-400 italic font-normal">(Belum diisi &mdash; Draft)</div>
                                 @else
@@ -457,10 +553,16 @@
                                 @endif
                             </td>
                             <td class="py-4 px-3 text-slate-700 font-medium text-xs">
-                                {{ $item->tujuan }}
+                                @if($isSk || $isLainnya)
+                                    <span class="text-slate-400 font-semibold">-</span>
+                                @else
+                                    {{ $item->tujuan ?: '-' }}
+                                @endif
                             </td>
                             <td class="py-4 px-3 text-xs text-slate-700">
-                                @if($item->pegawais && $item->pegawais->count() > 0)
+                                @if($isSk || $isLainnya)
+                                    <span class="text-slate-400 italic">-</span>
+                                @elseif($item->pegawais && $item->pegawais->count() > 0)
                                     <div>
                                         @if($item->children && $item->children->count() > 0)
                                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Personel SPT:</span>
@@ -475,7 +577,7 @@
                                     <span class="text-slate-400 italic">Tidak ada pegawai</span>
                                 @endif
 
-                                @if($item->children && $item->children->count() > 0)
+                                @if(!$isTelaah && !$isSk && !$isLainnya && $item->children && $item->children->count() > 0)
                                     @foreach($item->children as $child)
                                         @if($child->pegawais && $child->pegawais->count() > 0)
                                             <div class="mt-2.5 pt-2 border-t border-blue-100/70">
@@ -498,16 +600,19 @@
                             <td class="py-4 px-3 text-center whitespace-nowrap">
                                 <div class="flex items-center justify-center gap-1.5">
                                     <!-- Tombol Berkas Drive / Upload Cepat -->
-                                    @if($item->link_google_drive || $item->google_drive_url)
-                                        <a href="{{ $item->link_google_drive ?: $item->google_drive_url }}" 
-                                           target="_blank" 
-                                           rel="noopener noreferrer"
-                                           class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white font-bold text-xs border border-emerald-200/60 shadow-sm transition-all"
-                                           title="Buka Berkas di Google Drive (Tab Baru)">
+                                    @php
+                                        $driveLink = !empty($item->google_drive_url) ? $item->google_drive_url : (!empty($item->link_google_drive) ? $item->link_google_drive : null);
+                                    @endphp
+                                    @if(!empty($driveLink))
+                                        <a href="{{ $driveLink }}" 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white font-bold text-xs border border-emerald-200/60 shadow-sm transition-all"
+                                            title="Buka Berkas di Google Drive (Tab Baru)">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                                             Lihat File
                                         </a>
-                                    @else
+                                    @elseif(!$isTelaah && !$isSk)
                                         <button type="button" 
                                                 @click="openUploadModalFor({{ json_encode($jsonData) }})" 
                                                 class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-50 text-slate-600 hover:bg-primary hover:text-white font-bold text-xs border border-slate-200 shadow-sm transition-all cursor-pointer"
@@ -518,24 +623,57 @@
                                     @endif
 
                                     <!-- Tombol Lihat Detail -->
-                                    <button type="button" 
-                                            @click="openDetail({{ json_encode($jsonData) }})" 
-                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-primary hover:bg-primary hover:text-white font-bold text-xs border border-blue-200/60 shadow-sm transition-all cursor-pointer"
-                                            title="Lihat Detail & Edit Cepat">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                        Lihat
-                                    </button>
+                                    @if($isTelaah)
+                                        <a href="{{ $item->show_route ?? route('surat.telaah.show', $item->id) }}" 
+                                           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-primary hover:bg-primary hover:text-white font-bold text-xs border border-blue-200/60 shadow-sm transition-all"
+                                           title="Lihat Detail Telaahan">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                            Lihat
+                                        </a>
+                                        @if(auth()->user()->role_id == 2 && !empty($item->edit_route))
+                                            <a href="{{ $item->edit_route }}" 
+                                               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white font-bold text-xs border border-amber-200/60 shadow-sm transition-all"
+                                               title="Edit Surat Telaah">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                Edit
+                                            </a>
+                                        @endif
+                                    @elseif($isSk)
+                                        <a href="{{ $item->show_route ?? route('surat.sk.show', $item->id) }}" 
+                                           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-primary hover:bg-primary hover:text-white font-bold text-xs border border-blue-200/60 shadow-sm transition-all"
+                                           title="Lihat Detail SK">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                            Lihat
+                                        </a>
+                                        @if(auth()->user()->role_id == 2 && !empty($item->edit_route))
+                                            <a href="{{ $item->edit_route }}" 
+                                               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white font-bold text-xs border border-amber-200/60 shadow-sm transition-all"
+                                               title="Edit Surat SK">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                Edit
+                                            </a>
+                                        @endif
+                                    @else
+                                        <button type="button" 
+                                                @click="openDetail({{ json_encode($jsonData) }})" 
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-primary hover:bg-primary hover:text-white font-bold text-xs border border-blue-200/60 shadow-sm transition-all cursor-pointer"
+                                                title="Lihat Detail & Edit Cepat">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                            Lihat
+                                        </button>
+                                    @endif
 
                                     <!-- Tombol Hapus (Khusus Kasubag) -->
                                     @if(auth()->user()->role_id == 2)
                                     @php
-                                        $childCount = $item->children ? $item->children->count() : 0;
-                                        $childNomors = $item->children ? $item->children->pluck('nomor_surat')->filter()->values()->all() : [];
+                                        $childCount = ($item->children && is_iterable($item->children)) ? $item->children->count() : 0;
+                                        $childNomors = ($item->children && is_iterable($item->children)) ? $item->children->pluck('nomor_surat')->filter()->values()->all() : [];
+                                        $delRoute = $item->delete_route ?? route('surat.destroy', $item->id);
                                     @endphp
                                     <button type="button" 
-                                            @click="confirmDelete('{{ $item->id }}', '{{ $item->nomor_surat }}', {{ $childCount }}, {{ json_encode($childNomors) }})" 
+                                            @click="confirmDelete('{{ $item->id }}', '{{ $item->nomor_surat }}', {{ $childCount }}, {{ json_encode($childNomors) }}, '{{ $delRoute }}')" 
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white font-bold text-xs border border-rose-200/60 shadow-sm transition-all cursor-pointer"
-                                            title="{{ $childCount > 0 ? 'SPT ini memiliki ' . $childCount . ' SPPD terkait (tidak dapat dihapus)' : 'Hapus Surat' }}">
+                                            title="{{ $childCount > 0 ? 'Surat ini memiliki ' . $childCount . ' SPPD terkait (tidak dapat dihapus)' : 'Hapus Surat' }}">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                         Hapus
                                     </button>
@@ -545,7 +683,13 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="py-8 text-center text-xs text-slate-400 italic">Belum ada data rekapitulasi nomor surat yang sesuai dengan filter.</td>
+                            <td colspan="8" class="py-12 text-center text-xs text-slate-400 italic">
+                                <div class="flex flex-col items-center justify-center gap-2">
+                                    <span class="text-3xl">📭</span>
+                                    <span class="font-medium text-slate-500">Tidak ada data surat yang sesuai dengan filter ini.</span>
+                                    <span class="text-[11px] text-slate-400">Silakan ubah kata kunci pencarian atau klik Reset Filter untuk melihat semua data.</span>
+                                </div>
+                            </td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -1307,7 +1451,7 @@
                         <button type="button" @click="cancelDelete()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer">
                             Batal
                         </button>
-                        <form :action="'{{ url('surat') }}/' + deleteSuratId" method="POST" class="inline">
+                        <form :action="deleteSuratUrl || ('{{ url('surat') }}/' + deleteSuratId)" method="POST" class="inline">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-500/25 flex items-center gap-1.5 transition-all cursor-pointer">
@@ -1399,7 +1543,7 @@
                 </div>
 
                 <!-- Modal Form Body -->
-                <form action="{{ route('surat.sppd.storeStandalone') }}" method="POST" enctype="multipart/form-data" @submit="submitStandaloneSppd($event)" class="p-6 space-y-5" x-data="{ selectedSppdFileName: '', selectedSppdFileSize: '', isSppdDragging: false }">
+                <form action="{{ route('surat.sppd.storeStandalone') }}" method="POST" @submit="submitStandaloneSppd($event)" class="p-6 space-y-5">
                     @csrf
                     
                     <input type="hidden" name="parent_id" :value="sppdModeSpt === 'pilih' && sppdSelectedSpt ? sppdSelectedSpt.id : ''">
@@ -1631,63 +1775,20 @@
                         </div>
                     </div>
 
-                    <!-- SEKSI 4: UPLOAD BERKAS SCAN (OPSIONAL) -->
-                    <div class="space-y-2">
-                        <label class="form-label text-xs">Unggah Berkas Fisik Scan (Opsional)</label>
-                        
-                        <div class="relative border-2 border-dashed rounded-2xl p-4 text-center transition-all bg-slate-50/60"
-                             :class="isSppdDragging ? 'border-primary bg-blue-50/50 scale-[0.99]' : 'border-blue-200 hover:border-blue-300'"
-                             @dragover.prevent="isSppdDragging = true"
-                             @dragleave.prevent="isSppdDragging = false"
-                             @drop.prevent="
-                                isSppdDragging = false; 
-                                if ($event.dataTransfer.files.length > 0) {
-                                    $refs.fileInputSppdStandalone.files = $event.dataTransfer.files;
-                                    const f = $event.dataTransfer.files[0];
-                                    selectedSppdFileName = f.name;
-                                    selectedSppdFileSize = (f.size / 1024 / 1024).toFixed(2) + ' MB';
-                                }
-                             ">
-                            <input type="file" 
-                                   name="file_surat" 
-                                   x-ref="fileInputSppdStandalone"
-                                   accept=".pdf,.jpg,.jpeg,.png"
-                                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                   @change="
-                                    if ($event.target.files.length > 0) {
-                                        const f = $event.target.files[0];
-                                        selectedSppdFileName = f.name;
-                                        selectedSppdFileSize = (f.size / 1024 / 1024).toFixed(2) + ' MB';
-                                    } else {
-                                        selectedSppdFileName = '';
-                                        selectedSppdFileSize = '';
-                                    }
-                                   ">
-                            
-                            <div class="flex flex-col items-center justify-center space-y-1 pointer-events-none">
-                                <div class="w-9 h-9 rounded-xl bg-blue-50 text-primary flex items-center justify-center">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                                </div>
-                                <div>
-                                    <template x-if="!selectedSppdFileName">
-                                        <div>
-                                            <p class="text-xs font-bold text-navy">
-                                                Pilih file scan atau tarik ke sini (PDF, JPG, JPEG, PNG maks 10MB)
-                                            </p>
-                                            <p class="text-[11px] text-slate-400">
-                                                Dapat diunggah belakangan setelah surat dicap dan ditandatangani.
-                                            </p>
-                                        </div>
-                                    </template>
-                                    <template x-if="selectedSppdFileName">
-                                        <div class="p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-medium inline-flex items-center gap-2">
-                                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                            <span>File dipilih: <strong class="font-mono text-emerald-900" x-text="selectedSppdFileName"></strong> (<span x-text="selectedSppdFileSize"></span>)</span>
-                                        </div>
-                                    </template>
-                                </div>
+                    <!-- SEKSI 4: BERKAS LAMPIRAN FISIK (OPSIONAL) -->
+                    <div class="space-y-1">
+                        <label for="link_google_drive_sppd_standalone" class="form-label text-xs">Link Dokumen Google Drive <span class="text-slate-400 font-normal lowercase">(opsional)</span></label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
                             </div>
+                            <input type="url" 
+                                   id="link_google_drive_sppd_standalone" 
+                                   name="link_google_drive" 
+                                   placeholder="https://drive.google.com/file/d/.../view?usp=sharing" 
+                                   class="form-input !pl-10 font-mono text-xs">
                         </div>
+                        <span class="text-[11px] text-slate-400 block">Tautan ke scan atau berkas SPPD yang disimpan di Google Drive (opsional).</span>
                     </div>
 
                     <!-- Modal Footer -->
@@ -1848,13 +1949,217 @@
         </div>
     </div>
 
+    <!-- ======================================================== -->
+    <!-- MODAL PILIH KATEGORI SURAT KELUAR (TUGAS 1)             -->
+    <!-- ======================================================== -->
+    <div x-show="showKategoriModal" 
+         x-cloak 
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 sm:p-6" 
+         @keydown.escape.window="showKategoriModal = false"
+         aria-labelledby="modal-kategori-title" 
+         role="dialog" 
+         aria-modal="true">
+        
+        <div x-show="showKategoriModal" 
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
+             @click="showKategoriModal = false"></div>
+
+        <div x-show="showKategoriModal" 
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             class="relative bg-white rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl border border-blue-100 space-y-6 z-10 text-left overflow-hidden">
+            
+            <div class="flex items-center justify-between pb-4 border-b border-blue-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md shadow-blue-500/20">
+                        ✨
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-extrabold text-navy" id="modal-kategori-title">Pilih Kategori Surat Keluar</h3>
+                        <p class="text-xs text-slate-500 font-medium">Pilih kategori surat yang ingin diterbitkan</p>
+                    </div>
+                </div>
+                <button type="button" @click="showKategoriModal = false" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- List Kategori Surat Keluar (Dinamis dari master jenis_surat) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                @foreach($jenisSurats ?? [] as $js)
+                    @php
+                        $catName = $js->nama ?? $js->nama_jenis;
+                        $codeLabel = $js->kode_surat ?? $js->kode_jenis;
+                        $isSppd = (str_contains(strtoupper($catName), 'SPPD'));
+                        $isSpt = (str_contains(strtoupper($catName), 'SPT') || strtoupper($catName) === 'SURAT PERINTAH TUGAS');
+                        $isTelaah = (str_contains(strtoupper($catName), 'TELAAH'));
+                        $isSk = (str_contains(strtoupper($catName), 'SK') || str_contains(strtoupper($catName), 'KEPUTUSAN'));
+                        
+                        if ($isSpt) {
+                            $targetUrl = route('surat.create');
+                            $icon = '📄';
+                            $desc = 'Surat penugasan kedinasan dengan opsi penerbitan SPPD';
+                            $badge = 'Kode: ' . ($codeLabel ?: '555');
+                        } elseif ($isSppd) {
+                            $targetUrl = route('surat.sppd.create');
+                            $icon = '⚡';
+                            $desc = 'Surat perjalanan dinas yang merujuk ke SPT Induk';
+                            $badge = 'Kode: ' . ($codeLabel ?: '090');
+                        } elseif ($isTelaah) {
+                            $targetUrl = route('surat.telaah.create');
+                            $icon = '📝';
+                            $desc = 'Telaahan staf kedinasan (Default manual, opsi otomatis)';
+                            $badge = 'Kode: ' . ($codeLabel ?: '555/KEP');
+                        } elseif ($isSk) {
+                            $targetUrl = route('surat.sk.create');
+                            $icon = '📜';
+                            $desc = 'Surat Keputusan Kepala Dinas (Default manual, opsi otomatis)';
+                            $badge = 'Kode: ' . ($codeLabel ?: '555/KEP');
+                        } else {
+                            $targetUrl = route('surat.lainnya.create');
+                            $icon = '✉️';
+                            $desc = 'Surat dinas keluar biasa atau format jenis lainnya';
+                            $badge = $codeLabel ? ('Kode: ' . $codeLabel) : 'Kode Kosong (Hanya Manual)';
+                        }
+                    @endphp
+
+                    <a href="{{ $targetUrl }}" 
+                       class="p-4 rounded-2xl border transition-all text-left group shadow-sm flex flex-col justify-between cursor-pointer {{ $isSppd ? 'border-pink-200 bg-white hover:bg-pink-50/60 hover:border-pink-300' : 'border-blue-200/60 bg-white hover:bg-blue-50/60 hover:border-blue-300' }}">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="w-9 h-9 rounded-xl flex items-center justify-center text-lg {{ $isSppd ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-primary' }}">{{ $icon }}</span>
+                                <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full {{ $isSppd ? 'bg-pink-50 text-pink-700 border border-pink-200' : 'bg-blue-50 text-primary border border-blue-200' }}">{{ $badge }}</span>
+                            </div>
+                            <h4 class="text-sm font-bold text-navy transition-colors {{ $isSppd ? 'group-hover:text-pink-600' : 'group-hover:text-primary' }}">{{ $catName }}</h4>
+                            <p class="text-xs text-slate-500 mt-1 leading-relaxed">{{ $desc }}</p>
+                        </div>
+                        <div class="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold {{ $isSppd ? 'text-pink-600' : 'text-primary' }}">
+                            <span>Buat {{ $catName }}</span>
+                            <span class="group-hover:translate-x-1 transition-transform">&rarr;</span>
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+
+            <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                <span>Daftar kategori dikelola melalui master jenis surat.</span>
+                <button type="button" @click="showKategoriModal = false" class="btn-pill-secondary px-4 py-1.5 text-xs font-bold text-slate-600">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
+    function handleMonthYearChange() {
+        const form = document.getElementById('filterForm');
+        if (!form) return;
+        const monthSelect = document.getElementById('filterMonthSelect');
+        const yearSelect = document.getElementById('filterYearSelect');
+        const startDateInput = document.getElementById('filterStartDate');
+        const endDateInput = document.getElementById('filterEndDate');
+
+        const m = monthSelect ? monthSelect.value : '';
+        let y = yearSelect ? yearSelect.value : '';
+
+        if (m) {
+            if (!y) {
+                y = new Date().getFullYear().toString();
+                if (yearSelect) yearSelect.value = y;
+            }
+            const monthNum = parseInt(m, 10);
+            const lastDay = new Date(parseInt(y, 10), monthNum, 0).getDate();
+            const mm = String(monthNum).padStart(2, '0');
+            if (startDateInput) startDateInput.value = `${y}-${mm}-01`;
+            if (endDateInput) endDateInput.value = `${y}-${mm}-${String(lastDay).padStart(2, '0')}`;
+        } else if (y) {
+            if (startDateInput) startDateInput.value = `${y}-01-01`;
+            if (endDateInput) endDateInput.value = `${y}-12-31`;
+        }
+        form.submit();
+    }
+
+    function handleDateDirectChange() {
+        const monthSelect = document.getElementById('filterMonthSelect');
+        const yearSelect = document.getElementById('filterYearSelect');
+        if (monthSelect) monthSelect.value = '';
+        if (yearSelect) yearSelect.value = '';
+        const form = document.getElementById('filterForm');
+        if (form) form.submit();
+    }
+
+    function applyQuickFilter(type) {
+        const form = document.getElementById('filterForm');
+        if (!form) return;
+
+        const filterJenisSelect = form.querySelector('select[name="filter_jenis"]');
+        const monthSelect = document.getElementById('filterMonthSelect');
+        const yearSelect = document.getElementById('filterYearSelect');
+        const startDateInput = document.getElementById('filterStartDate');
+        const endDateInput = document.getElementById('filterEndDate');
+
+        const now = new Date();
+        const curYear = now.getFullYear().toString();
+        const curMonth = (now.getMonth() + 1).toString();
+        const startOfMonth = '{{ now()->startOfMonth()->format('Y-m-d') }}';
+        const endOfMonth = '{{ now()->endOfMonth()->format('Y-m-d') }}';
+
+        if (type === 'spt') {
+            if (filterJenisSelect && filterJenisSelect.value === 'SPT') {
+                filterJenisSelect.value = '';
+            } else {
+                if (filterJenisSelect) filterJenisSelect.value = 'SPT';
+            }
+            if (monthSelect) monthSelect.value = '';
+            if (yearSelect) yearSelect.value = '';
+            if (startDateInput) startDateInput.value = '';
+            if (endDateInput) endDateInput.value = '';
+        } else if (type === 'sppd') {
+            if (filterJenisSelect && filterJenisSelect.value === 'SPPD') {
+                filterJenisSelect.value = '';
+            } else {
+                if (filterJenisSelect) filterJenisSelect.value = 'SPPD';
+            }
+            if (monthSelect) monthSelect.value = '';
+            if (yearSelect) yearSelect.value = '';
+            if (startDateInput) startDateInput.value = '';
+            if (endDateInput) endDateInput.value = '';
+        } else if (type === 'month') {
+            const isCurrentMonthActive = (startDateInput && startDateInput.value === startOfMonth && endDateInput && endDateInput.value === endOfMonth && (!filterJenisSelect || !filterJenisSelect.value));
+            if (isCurrentMonthActive) {
+                if (monthSelect) monthSelect.value = '';
+                if (yearSelect) yearSelect.value = '';
+                if (startDateInput) startDateInput.value = '';
+                if (endDateInput) endDateInput.value = '';
+            } else {
+                if (filterJenisSelect) filterJenisSelect.value = '';
+                if (monthSelect) monthSelect.value = curMonth;
+                if (yearSelect) yearSelect.value = curYear;
+                if (startDateInput) startDateInput.value = startOfMonth;
+                if (endDateInput) endDateInput.value = endOfMonth;
+            }
+        }
+
+        form.submit();
+    }
+
     function suratIndexManager() {
         return {
             viewMode: 'table', // 'table' | 'detail'
             isEditing: false,
+            showKategoriModal: false,
             activeSurat: {},
             allPegawaiList: @json($allPegawais ?? []),
             sptList: @json($sptList ?? []),
@@ -1867,6 +2172,7 @@
             deleteSuratNomor: '',
             deleteSuratChildCount: 0,
             deleteSuratChildNomors: [],
+            deleteSuratUrl: null,
 
             // State Upload Berkas Scan Cepat
             isUploadModalOpen: false,
@@ -1984,67 +2290,17 @@
             evaluateStandaloneSppdBackdate() {
                 if (!this.sppdTanggal) return;
                 const targetDate = this.sppdTanggal;
-                const targetYear = parseInt(targetDate.split('-')[0], 10);
-                const bln = this.formatSppdBulanRomawi();
-                const thn = this.formatSppdTahun();
-                const jp = (this.sppdSelectedSpt && this.sppdSelectedSpt.jenis_penugasan) ? this.sppdSelectedSpt.jenis_penugasan : 'DD';
 
-                if (this.seriesSummary && this.seriesSummary.sppd) {
-                    const sppdData = this.seriesSummary.sppd;
-                    const items = (sppdData.items || []).filter(it => it.tgl_surat.startsWith(String(targetYear)) || it.nomor_surat.endsWith('/' + targetYear));
-
-                    let maxBaseSeq = 0;
-                    let highestSurat = null;
-                    if (items.length > 0) {
-                        maxBaseSeq = Math.max(...items.map(it => it.base_seq));
-                        const candidates = items.filter(it => it.base_seq === maxBaseSeq).sort((a, b) => b.tgl_surat.localeCompare(a.tgl_surat));
-                        highestSurat = candidates[0];
-                    }
-
-                    const highestDate = highestSurat ? highestSurat.tgl_surat : null;
-                    const isBack = (highestSurat !== null && highestDate !== null && targetDate < highestDate);
-
-                    if (isBack) {
-                        this.sppdIsBackdate = true;
-                        const predecessors = items.filter(it => it.tgl_surat <= targetDate).sort((a, b) => {
-                            if (a.tgl_surat !== b.tgl_surat) return b.tgl_surat.localeCompare(a.tgl_surat);
-                            if (a.base_seq !== b.base_seq) return b.base_seq - a.base_seq;
-                            return (b.letter || '').localeCompare(a.letter || '');
-                        });
-
-                        let pred = predecessors.length > 0 ? predecessors[0] : (items.slice().sort((a, b) => a.base_seq - b.base_seq)[0]);
-                        const baseSeq = pred ? pred.base_seq : 1;
-                        const paddedBase = String(baseSeq).padStart(3, '0');
-                        this.sppdBaseSeq = paddedBase;
-                        const predNomor = pred ? pred.nomor_surat : ('090/KOMINFO-BB/SPPD/DD/' + paddedBase + '/' + bln + '/' + thn);
-                        this.sppdPredecessorNomor = predNomor;
-
-                        const usedLetters = items.filter(it => it.base_seq === baseSeq).map(it => it.letter).filter(Boolean);
-                        let letterIdx = 0;
-                        while (usedLetters.includes(this.getLetterSuffix(letterIdx))) {
-                            letterIdx++;
-                        }
-                        this.sppdStartLetterIdx = letterIdx;
-                        const letter = this.getLetterSuffix(letterIdx);
-                        const previewNomor = `090/KOMINFO-BB/SPPD/${jp}/${paddedBase}${letter}/${bln}/${thn}`;
-                        this.sppdBackdateNotice = `Terdeteksi tanggal mundur (backdate) — nomor akan disisipkan sebagai anak dari nomor ${predNomor}, menjadi ${previewNomor}.`;
-                    } else {
-                        this.sppdIsBackdate = false;
-                        this.sppdBackdateNotice = '';
-                        this.sppdBaseSeq = String(maxBaseSeq + 1).padStart(3, '0');
-                        this.sppdStartLetterIdx = 0;
-                    }
-                }
-
-                // Sync API
-                fetch(`/surat/api/check-backdate?series=SPPD&tgl_surat=${targetDate}&jenis_penugasan=${jp}`)
+                // Sync API terpusat (satu sumber kebenaran)
+                fetch(`/surat/api/check-backdate-kategori?kategori=SPPD&tgl_surat=${encodeURIComponent(targetDate)}`)
                     .then(res => res.json())
                     .then(data => {
                         if (data) {
                             this.sppdIsBackdate = Boolean(data.is_backdate);
-                            this.sppdBackdateNotice = data.notice || '';
-                            this.sppdPredecessorNomor = data.predecessor_nomor || '';
-                            if (data.base_seq) this.sppdBaseSeq = data.base_seq;
+                            this.sppdBackdateNotice = data.notice || (data.is_backdate ? 'Tanggal surat sebelum hari ini (backdate), nomor harus diisi manual.' : '');
+                            if (data.next_seq) {
+                                this.sppdBaseSeq = data.next_seq;
+                            }
                         }
                     })
                     .catch(() => {});
@@ -2055,8 +2311,7 @@
                 const thn = this.formatSppdTahun();
 
                 if (this.sppdIsBackdate) {
-                    const letter = this.getLetterSuffix(this.sppdStartLetterIdx + index);
-                    return `090/KOMINFO-BB/SPPD/${jp}/${this.sppdBaseSeq}${letter}/${bln}/${thn}`;
+                    return `Manual (Backdate)`;
                 } else {
                     const baseCounter = parseInt(this.sppdBaseSeq, 10) + index;
                     const seq = String(baseCounter).padStart(3, '0');
@@ -2312,27 +2567,11 @@
                     }
                 }
 
-                // Ambil huruf yang sudah digunakan oleh pegawai yang tersimpan
-                let existingLetters = [];
-                this.activeSurat.pegawais.forEach(p => {
-                    if (p.is_saved_sppd && p.nomor_sppd) {
-                        const regex = /090\/(?:[^\/]+\/SPPD\/[^\/]+\/)?\d+([a-z]+)\//i;
-                        const m = p.nomor_sppd.match(regex);
-                        if (m) existingLetters.push(m[1].toLowerCase());
-                    }
-                });
-
-                let letterIndex = 0;
-                this.activeSurat.pegawais.forEach(p => {
+                let baseCounter = parseInt(sptUrut, 10);
+                this.activeSurat.pegawais.forEach((p, idx) => {
                     if (!p.is_saved_sppd) {
-                        let letter = this.getLetterSuffix(letterIndex);
-                        while (existingLetters.includes(letter)) {
-                            letterIndex++;
-                            letter = this.getLetterSuffix(letterIndex);
-                        }
-                        p.nomor_sppd = `090/KOMINFO-BB/SPPD/${jp}/${sptUrut}${letter}/${bln}/${thn}`;
-                        existingLetters.push(letter);
-                        letterIndex++;
+                        const padded = String(baseCounter + idx).padStart(3, '0');
+                        p.nomor_sppd = `090/KOMINFO-BB/SPPD/${jp}/${padded}/${bln}/${thn}`;
                     }
                 });
             },
@@ -2431,11 +2670,12 @@
                     this.recalculateLiveSppd();
                 }
             },
-            confirmDelete(id, nomor, childCount = 0, childNomors = []) {
+            confirmDelete(id, nomor, childCount = 0, childNomors = [], deleteUrl = null) {
                 this.deleteSuratId = id;
                 this.deleteSuratNomor = nomor;
                 this.deleteSuratChildCount = childCount || 0;
                 this.deleteSuratChildNomors = Array.isArray(childNomors) ? childNomors : [];
+                this.deleteSuratUrl = deleteUrl || ('/surat/' + id);
                 this.isDeleteModalOpen = true;
             },
             cancelDelete() {
@@ -2444,6 +2684,7 @@
                 this.deleteSuratNomor = '';
                 this.deleteSuratChildCount = 0;
                 this.deleteSuratChildNomors = [];
+                this.deleteSuratUrl = null;
             }
         }
     }

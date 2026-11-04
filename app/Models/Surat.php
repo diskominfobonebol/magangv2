@@ -47,7 +47,11 @@ class Surat extends Model
      */
     public static function formatBulanRomawi($date = null): string
     {
-        $d = ($date instanceof \DateTimeInterface) ? $date : new \DateTime($date ?: date('Y-m-d'));
+        try {
+            $d = ($date instanceof \DateTimeInterface) ? $date : new \DateTime($date ?: date('Y-m-d'));
+        } catch (\Throwable $e) {
+            $d = new \DateTime();
+        }
         $romawiBulan = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
         return $romawiBulan[(int)$d->format('n') - 1] ?? 'I';
     }
@@ -57,7 +61,11 @@ class Surat extends Model
      */
     public static function formatTahun($date = null): string
     {
-        $d = ($date instanceof \DateTimeInterface) ? $date : new \DateTime($date ?: date('Y-m-d'));
+        try {
+            $d = ($date instanceof \DateTimeInterface) ? $date : new \DateTime($date ?: date('Y-m-d'));
+        } catch (\Throwable $e) {
+            $d = new \DateTime();
+        }
         return $d->format('Y');
     }
 
@@ -67,14 +75,30 @@ class Surat extends Model
      * Contoh non-backdate: 555/KOMINFO-BB/SPT-DD/003/IX/2026
      * Contoh backdate:     555/KOMINFO-BB/SPT-DD/001a/IX/2026
      */
-    public static function formatNomorSpt(string $noUrut, $letterOrTgl = '', $tglSurat = null, string $jenisPenugasan = 'DD'): string
+    public static function formatNomorSpt(string $noUrut, $arg2 = '', $arg3 = null, string $arg4 = 'DD'): string
     {
-        // Handle polymorphic signature: formatNomorSpt($noUrut, $tglSurat, $jenisPenugasan) or formatNomorSpt($noUrut, $letter, $tglSurat, $jenisPenugasan)
         $letter = '';
-        if ($tglSurat === null && (is_string($letterOrTgl) && preg_match('/^\d{4}-\d{2}-\d{2}/', $letterOrTgl))) {
-            $tglSurat = $letterOrTgl;
-        } elseif (is_string($letterOrTgl) && !preg_match('/^\d{4}-\d{2}-\d{2}/', $letterOrTgl)) {
-            $letter = $letterOrTgl;
+        $tglSurat = null;
+        $jp = 'DD';
+
+        $isArg2Date = ($arg2 instanceof \DateTimeInterface) || (is_string($arg2) && preg_match('/^\d{4}-\d{2}-\d{2}/', $arg2));
+
+        if ($isArg2Date) {
+            $tglSurat = $arg2;
+            $letter = '';
+            if (is_string($arg3) && !empty($arg3)) {
+                $jp = $arg3;
+            }
+        } else {
+            $letter = (string)$arg2;
+            $tglSurat = $arg3;
+            if (!empty($arg4)) {
+                $jp = $arg4;
+            }
+        }
+
+        if (!($tglSurat instanceof \DateTimeInterface) && (!is_string($tglSurat) || !preg_match('/\d{4}/', $tglSurat))) {
+            $tglSurat = date('Y-m-d');
         }
 
         $bln = self::formatBulanRomawi($tglSurat);
@@ -91,9 +115,9 @@ class Surat extends Model
             $cleanUrut = str_pad(preg_replace('/\D/', '', $noUrut) ?: '1', 3, '0', STR_PAD_LEFT);
         }
 
-        $jp = strtoupper(trim($jenisPenugasan ?: 'DD'));
+        $cleanJp = strtoupper(trim($jp ?: 'DD'));
 
-        return "555/KOMINFO-BB/SPT-{$jp}/{$cleanUrut}{$cleanLetter}/{$bln}/{$thn}";
+        return "555/KOMINFO-BB/SPT-{$cleanJp}/{$cleanUrut}{$cleanLetter}/{$bln}/{$thn}";
     }
 
     /**
@@ -102,8 +126,32 @@ class Surat extends Model
      * Contoh non-backdate: 090/KOMINFO-BB/SPPD/DD/001/IX/2026
      * Contoh backdate:     090/KOMINFO-BB/SPPD/DD/001a/IX/2026
      */
-    public static function formatNomorSppd(string $sppdUrut, string $letter = '', $tglSurat = null, string $jenisPenugasan = 'DD'): string
+    public static function formatNomorSppd(string $sppdUrut, $arg2 = '', $arg3 = null, string $arg4 = 'DD'): string
     {
+        $letter = '';
+        $tglSurat = null;
+        $jp = 'DD';
+
+        $isArg2Date = ($arg2 instanceof \DateTimeInterface) || (is_string($arg2) && preg_match('/^\d{4}-\d{2}-\d{2}/', $arg2));
+
+        if ($isArg2Date) {
+            $tglSurat = $arg2;
+            $letter = '';
+            if (is_string($arg3) && !empty($arg3)) {
+                $jp = $arg3;
+            }
+        } else {
+            $letter = (string)$arg2;
+            $tglSurat = $arg3;
+            if (!empty($arg4)) {
+                $jp = $arg4;
+            }
+        }
+
+        if (!($tglSurat instanceof \DateTimeInterface) && (!is_string($tglSurat) || !preg_match('/\d{4}/', $tglSurat))) {
+            $tglSurat = date('Y-m-d');
+        }
+
         $bln = self::formatBulanRomawi($tglSurat);
         $thn = self::formatTahun($tglSurat);
 
@@ -118,59 +166,29 @@ class Surat extends Model
             $cleanUrut = str_pad(preg_replace('/\D/', '', $sppdUrut) ?: '1', 3, '0', STR_PAD_LEFT);
         }
 
-        $jp = strtoupper(trim($jenisPenugasan ?: 'DD'));
+        $cleanJp = strtoupper(trim($jp ?: 'DD'));
 
-        return "090/KOMINFO-BB/SPPD/{$jp}/{$cleanUrut}{$cleanLetter}/{$bln}/{$thn}";
+        return "090/KOMINFO-BB/SPPD/{$cleanJp}/{$cleanUrut}{$cleanLetter}/{$bln}/{$thn}";
     }
 
     /**
      * Ekstrak komponen nomor urut dan suffix huruf dari nomor surat (SPT maupun SPPD).
+     * Menggunakan helper resmi NomorSuratService::parseNomorSurat dengan regex ujung kanan.
      * Returns: ['base_seq' => int, 'padded_seq' => string, 'letter' => string, 'full_seq' => string]
      */
     public static function extractSequenceComponents(?string $nomor): array
     {
-        if (empty($nomor)) {
-            return ['base_seq' => 1, 'padded_seq' => '001', 'letter' => '', 'full_seq' => '001'];
+        $parsed = \App\Services\NomorSuratService::parseNomorSurat($nomor);
+        if ($parsed !== null) {
+            return [
+                'base_seq' => $parsed['urut'],
+                'padded_seq' => $parsed['padded_urut'],
+                'letter' => $parsed['letter'],
+                'full_seq' => $parsed['full_seq'],
+            ];
         }
 
-        $trimmed = trim($nomor);
-
-        // 1. Format SPT: 555/KOMINFO-BB/SPT-DD/{urut}{huruf}/{bulan}/{tahun}
-        if (preg_match('/^555\/[^\/]+\/SPT-[^\/]+\/(\d+)([a-z]*)/i', $trimmed, $m)) {
-            $base = (int)$m[1];
-            $padded = str_pad($m[1], 3, '0', STR_PAD_LEFT);
-            $letter = strtolower($m[2] ?? '');
-            return ['base_seq' => $base, 'padded_seq' => $padded, 'letter' => $letter, 'full_seq' => $padded . $letter];
-        }
-
-        // 2. Format SPPD: 090/KOMINFO-BB/SPPD/DD/{urut}{huruf}/{bulan}/{tahun}
-        if (preg_match('/^090\/[^\/]+\/SPPD\/[^\/]+\/(\d+)([a-z]*)/i', $trimmed, $m)) {
-            $base = (int)$m[1];
-            $padded = str_pad($m[1], 3, '0', STR_PAD_LEFT);
-            $letter = strtolower($m[2] ?? '');
-            return ['base_seq' => $base, 'padded_seq' => $padded, 'letter' => $letter, 'full_seq' => $padded . $letter];
-        }
-
-        // 3. Format Legacy / Variasi lain (pecah per '/')
-        $parts = explode('/', $trimmed);
-        foreach ($parts as $idx => $part) {
-            if ($idx > 0 && preg_match('/^\s*(\d+)([a-z]*)/i', $part, $m)) {
-                $base = (int)$m[1];
-                $padded = str_pad($m[1], 3, '0', STR_PAD_LEFT);
-                $letter = strtolower($m[2] ?? '');
-                return ['base_seq' => $base, 'padded_seq' => $padded, 'letter' => $letter, 'full_seq' => $padded . $letter];
-            }
-        }
-
-        // 4. Fallback angka + huruf pertama
-        if (preg_match('/(\d+)([a-z]*)/i', $trimmed, $m)) {
-            $base = (int)$m[1];
-            $padded = str_pad($m[1], 3, '0', STR_PAD_LEFT);
-            $letter = strtolower($m[2] ?? '');
-            return ['base_seq' => $base, 'padded_seq' => $padded, 'letter' => $letter, 'full_seq' => $padded . $letter];
-        }
-
-        return ['base_seq' => 1, 'padded_seq' => '001', 'letter' => '', 'full_seq' => '001'];
+        return ['base_seq' => 0, 'padded_seq' => '000', 'letter' => '', 'full_seq' => '000'];
     }
 
     /**

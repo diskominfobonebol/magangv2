@@ -252,7 +252,7 @@
                             <!-- Nama Lengkap -->
                             <div class="sm:col-span-2">
                                 <label class="form-label">Nama Lengkap & Gelar</label>
-                                <input type="text" name="nama" required placeholder="Cth: Dr. H. Syamsuddin, M.Si" class="form-input">
+                                <input type="text" name="nama" required placeholder="ICHSAN BUDIMAN WANTOGIA, S.Pi, M.Adm.Pemb" class="form-input">
                             </div>
                             
                             <!-- NIP -->

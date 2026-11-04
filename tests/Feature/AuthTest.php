@@ -30,7 +30,7 @@ class AuthTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertRedirect('/dashboard/master');
+        $response->assertRedirect(route('2fa.setup'));
         $this->assertAuthenticated();
     }
 
@@ -41,7 +41,7 @@ class AuthTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertRedirect('/dashboard/master');
+        $response->assertRedirect(route('2fa.setup'));
         $this->assertAuthenticated();
     }
 
@@ -52,7 +52,7 @@ class AuthTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertRedirect('/surat');
+        $response->assertRedirect(route('2fa.setup'));
         $this->assertAuthenticated();
     }
 
@@ -63,7 +63,7 @@ class AuthTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertRedirect('/surat');
+        $response->assertRedirect(route('2fa.setup'));
         $this->assertAuthenticated();
     }
 
@@ -74,7 +74,7 @@ class AuthTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertRedirect('/admin/aset');
+        $response->assertRedirect(route('2fa.setup'));
         $this->assertAuthenticated();
     }
 
@@ -85,7 +85,7 @@ class AuthTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertRedirect('/mahasiswa/dashboard');
+        $response->assertRedirect(route('2fa.setup'));
         $this->assertAuthenticated();
     }
 
@@ -96,7 +96,7 @@ class AuthTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertRedirect('/dashboard/pegawai');
+        $response->assertRedirect(route('2fa.setup'));
         $this->assertAuthenticated();
     }
 
@@ -129,7 +129,7 @@ class AuthTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertRedirect('/dashboard/master');
+        $response->assertRedirect(route('2fa.setup'));
         $this->assertAuthenticated();
     }
 
@@ -140,7 +140,7 @@ class AuthTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertRedirect('/dashboard/master');
+        $response->assertRedirect(route('2fa.setup'));
         $this->assertAuthenticated();
     }
 

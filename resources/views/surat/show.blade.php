@@ -618,7 +618,7 @@
                 </div>
 
                 <!-- Modal Body -->
-                <form action="{{ route('surat.sppd.storeChild', $surat->id) }}" method="POST" enctype="multipart/form-data" @submit="submitTambahSppd($event)" class="p-6 space-y-5">
+                <form action="{{ route('surat.sppd.storeChild', $surat->id) }}" method="POST" @submit="submitTambahSppd($event)" class="p-6 space-y-5">
                     @csrf
 
                     <!-- Alert Info SPT Induk Terkunci -->
@@ -664,11 +664,20 @@
                         <input type="text" name="keterangan" x-model="keterangan" maxlength="150" class="form-input text-xs" placeholder="Contoh: Menggunakan transportasi darat/udara...">
                     </div>
 
-                    <!-- Row 4: Upload Scan File SPPD (Opsional) -->
-                    <div class="p-3.5 border border-blue-200/60 rounded-2xl bg-slate-50/50 space-y-2">
-                        <label class="form-label text-xs block">Unggah Berkas Scan SPPD Fisik (Opsional, PDF/Gambar Maks 10MB)</label>
-                        <input type="file" name="file_surat" accept=".pdf,.jpg,.jpeg,.png" class="form-input text-xs bg-white">
-                        <p class="text-[11px] text-slate-400">File akan otomatis tersimpan dan tersinkronisasi ke Google Drive.</p>
+                    <!-- Row 4: Link Dokumen Google Drive SPPD (Opsional) -->
+                    <div class="space-y-1">
+                        <label for="link_google_drive_sppd_child" class="form-label text-xs">Link Dokumen Google Drive <span class="text-slate-400 font-normal lowercase">(opsional)</span></label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                            </div>
+                            <input type="url" 
+                                   id="link_google_drive_sppd_child" 
+                                   name="link_google_drive" 
+                                   placeholder="https://drive.google.com/file/d/.../view?usp=sharing" 
+                                   class="form-input !pl-10 font-mono text-xs">
+                        </div>
+                        <span class="text-[11px] text-slate-400 block">Tautan ke scan atau berkas SPPD yang disimpan di Google Drive (opsional).</span>
                     </div>
 
                     <!-- Row 5: Pemilihan Personel yang Ditugaskan -->
@@ -939,66 +948,15 @@
             evaluateSppdBackdate() {
                 if (!this.tglSurat) return;
                 const targetDate = this.tglSurat;
-                const targetYear = parseInt(targetDate.split('-')[0], 10);
-                const bln = this.formatBulanRomawi();
-                const thn = this.formatTahun();
                 const jp = @json($surat->jenis_penugasan ?: 'DD');
 
-                if (this.seriesSummary && this.seriesSummary.sppd) {
-                    const sppdData = this.seriesSummary.sppd;
-                    const items = (sppdData.items || []).filter(it => it.tgl_surat.startsWith(String(targetYear)) || it.nomor_surat.endsWith('/' + targetYear));
-
-                    let maxBaseSeq = 0;
-                    let highestSurat = null;
-                    if (items.length > 0) {
-                        maxBaseSeq = Math.max(...items.map(it => it.base_seq));
-                        const candidates = items.filter(it => it.base_seq === maxBaseSeq).sort((a, b) => b.tgl_surat.localeCompare(a.tgl_surat));
-                        highestSurat = candidates[0];
-                    }
-
-                    const highestDate = highestSurat ? highestSurat.tgl_surat : null;
-                    const isBack = (highestSurat !== null && highestDate !== null && targetDate < highestDate);
-
-                    if (isBack) {
-                        this.sppdIsBackdate = true;
-                        const predecessors = items.filter(it => it.tgl_surat <= targetDate).sort((a, b) => {
-                            if (a.tgl_surat !== b.tgl_surat) return b.tgl_surat.localeCompare(a.tgl_surat);
-                            if (a.base_seq !== b.base_seq) return b.base_seq - a.base_seq;
-                            return (b.letter || '').localeCompare(a.letter || '');
-                        });
-
-                        let pred = predecessors.length > 0 ? predecessors[0] : (items.slice().sort((a, b) => a.base_seq - b.base_seq)[0]);
-                        const baseSeq = pred ? pred.base_seq : 1;
-                        const paddedBase = String(baseSeq).padStart(3, '0');
-                        this.sppdBaseSeq = paddedBase;
-                        const predNomor = pred ? pred.nomor_surat : ('090/KOMINFO-BB/SPPD/DD/' + paddedBase + '/' + bln + '/' + thn);
-                        this.sppdPredecessorNomor = predNomor;
-
-                        const usedLetters = items.filter(it => it.base_seq === baseSeq).map(it => it.letter).filter(Boolean);
-                        let letterIdx = 0;
-                        while (usedLetters.includes(this.getLetterSuffix(letterIdx))) {
-                            letterIdx++;
-                        }
-                        this.sppdStartLetterIdx = letterIdx;
-                        const letter = this.getLetterSuffix(letterIdx);
-                        const previewNomor = `090/KOMINFO-BB/SPPD/${jp}/${paddedBase}${letter}/${bln}/${thn}`;
-                        this.sppdBackdateNotice = `Terdeteksi tanggal mundur (backdate) — nomor akan disisipkan sebagai anak dari nomor ${predNomor}, menjadi ${previewNomor}.`;
-                    } else {
-                        this.sppdIsBackdate = false;
-                        this.sppdBackdateNotice = '';
-                        this.sppdBaseSeq = String(maxBaseSeq + 1).padStart(3, '0');
-                        this.sppdStartLetterIdx = 0;
-                    }
-                }
-
-                // Sync API
-                fetch(`/surat/api/check-backdate?series=SPPD&tgl_surat=${targetDate}&jenis_penugasan=${jp}`)
+                // Sync API terpusat (satu sumber kebenaran)
+                fetch(`/surat/api/check-backdate?series=SPPD&tgl_surat=${encodeURIComponent(targetDate)}&jenis_penugasan=${encodeURIComponent(jp)}`)
                     .then(res => res.json())
                     .then(data => {
                         if (data) {
                             this.sppdIsBackdate = Boolean(data.is_backdate);
-                            this.sppdBackdateNotice = data.notice || '';
-                            this.sppdPredecessorNomor = data.predecessor_nomor || '';
+                            this.sppdBackdateNotice = data.notice || (data.is_backdate ? 'Tanggal surat sebelum hari ini (backdate), nomor harus diisi manual.' : '');
                             if (data.base_seq) this.sppdBaseSeq = data.base_seq;
                         }
                     })
@@ -1010,8 +968,7 @@
                 const jp = @json($surat->jenis_penugasan ?: 'DD');
                 
                 if (this.sppdIsBackdate) {
-                    const letter = this.getLetterSuffix(this.sppdStartLetterIdx + index);
-                    return `090/KOMINFO-BB/SPPD/${jp}/${this.sppdBaseSeq}${letter}/${bln}/${thn}`;
+                    return `Manual (Backdate)`;
                 } else {
                     const baseCounter = parseInt(this.sppdBaseSeq, 10) + index;
                     const seq = String(baseCounter).padStart(3, '0');

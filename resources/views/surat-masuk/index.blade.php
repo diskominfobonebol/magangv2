@@ -12,6 +12,10 @@
             <p class="text-slate-500 mt-1 text-sm">Pencatatan dan arsip surat yang diterima dari pihak luar / instansi lain.</p>
         </div>
         <div class="flex items-center gap-3">
+            <a href="{{ route('surat-masuk.instansi.index') }}" class="btn-pill-secondary px-4 py-2.5 text-xs font-bold gap-2 shadow-sm flex items-center hover:text-primary transition-all">
+                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                Kelola Instansi
+            </a>
             <a href="{{ route('surat-masuk.export-pdf', request()->query()) }}" target="_blank" class="btn-pill-secondary px-5 py-2.5 text-xs font-bold gap-2 shadow-sm flex items-center hover:text-primary transition-all">
                 <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 Export Rekapitulasi PDF
@@ -139,8 +143,7 @@
                     📥
                 </div>
             </div>
-            <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-500 border-t {{ $isAllActive ? 'border-primary/20' : 'border-blue-100/50' }}">
-                <span class="font-medium text-slate-600">Seluruh Arsip Diterima</span>
+            <div class="mt-4 pt-3 flex items-center justify-end text-xs text-slate-500 border-t {{ $isAllActive ? 'border-primary/20' : 'border-blue-100/50' }}">
                 <span class="{{ $isAllActive ? 'text-primary font-extrabold' : 'text-primary font-bold' }} flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                     Semua Waktu
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
@@ -170,8 +173,7 @@
                     📅
                 </div>
             </div>
-            <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-500 border-t {{ $isMonthActive ? 'border-pink-200' : 'border-blue-100/50' }}">
-                <span class="font-medium text-slate-600">Periode {{ \Carbon\Carbon::now()->translatedFormat('F Y') }}</span>
+            <div class="mt-4 pt-3 flex items-center justify-end text-xs text-slate-500 border-t {{ $isMonthActive ? 'border-pink-200' : 'border-blue-100/50' }}">
                 <span class="{{ $isMonthActive ? 'text-pink-600 font-extrabold' : 'text-pink-600 font-bold' }} flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                     Bulan Ini
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
@@ -201,8 +203,7 @@
                     📂
                 </div>
             </div>
-            <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-500 border-t {{ $isYearActive ? 'border-indigo-200' : 'border-blue-100/50' }}">
-                <span class="font-medium text-slate-600">Tahun {{ date('Y') }}</span>
+            <div class="mt-4 pt-3 flex items-center justify-end text-xs text-slate-500 border-t {{ $isYearActive ? 'border-indigo-200' : 'border-blue-100/50' }}">
                 <span class="{{ $isYearActive ? 'text-indigo-600 font-extrabold' : 'text-indigo-600 font-bold' }} flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                     Tahun Berjalan
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
