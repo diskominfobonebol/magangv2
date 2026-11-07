@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\SuratMasuk;
+use App\Models\InstansiPengirim;
 use App\Http\Requests\StoreSuratMasukRequest;
 use App\Http\Requests\UpdateSuratMasukRequest;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class SuratMasukController extends Controller
@@ -148,12 +150,13 @@ class SuratMasukController extends Controller
     {
         $this->authorizeKasubag();
 
-        $daftarAsalSurat = SuratMasuk::select('asal_surat')
-            ->whereNotNull('asal_surat')
+        $fromInstansi = InstansiPengirim::orderBy('nama', 'asc')->pluck('nama');
+        $fromSurat = SuratMasuk::whereNotNull('asal_surat')
             ->where('asal_surat', '!=', '')
             ->distinct()
-            ->orderBy('asal_surat', 'asc')
             ->pluck('asal_surat');
+
+        $daftarAsalSurat = $fromInstansi->merge($fromSurat)->unique()->values();
 
         return view('surat-masuk.create', compact('daftarAsalSurat'));
     }
@@ -166,15 +169,19 @@ class SuratMasukController extends Controller
     {
         $this->authorizeKasubag();
 
-        SuratMasuk::create([
-            'nomor_surat' => $request->nomor_surat,
-            'tanggal_surat' => $request->tanggal_surat,
-            'asal_surat' => $request->asal_surat,
-            'uraian' => $request->uraian,
-            'keterangan' => $request->keterangan,
-            'link_google_drive' => $request->link_google_drive,
-            'created_by' => auth()->id(),
-        ]);
+        DB::transaction(function () use ($request) {
+            $finalAsalSurat = InstansiPengirim::findOrRegister($request->asal_surat);
+
+            SuratMasuk::create([
+                'nomor_surat' => $request->nomor_surat,
+                'tanggal_surat' => $request->tanggal_surat,
+                'asal_surat' => $finalAsalSurat,
+                'uraian' => $request->uraian,
+                'keterangan' => $request->keterangan,
+                'link_google_drive' => $request->link_google_drive,
+                'created_by' => auth()->id(),
+            ]);
+        });
 
         return redirect()->route('surat-masuk.index')->with('success', 'Data Surat Masuk berhasil ditambahkan!');
     }
@@ -218,12 +225,7 @@ class SuratMasukController extends Controller
         $this->authorizeKasubag();
         $suratMasuk = SuratMasuk::findOrFail($id);
 
-        $daftarAsalSurat = SuratMasuk::select('asal_surat')
-            ->whereNotNull('asal_surat')
-            ->where('asal_surat', '!=', '')
-            ->distinct()
-            ->orderBy('asal_surat', 'asc')
-            ->pluck('asal_surat');
+        $daftarAsalSurat = InstansiPengirim::orderBy('nama', 'asc')->pluck('nama');
 
         return view('surat-masuk.edit', compact('suratMasuk', 'daftarAsalSurat'));
     }
@@ -237,15 +239,19 @@ class SuratMasukController extends Controller
         $this->authorizeKasubag();
         $suratMasuk = SuratMasuk::findOrFail($id);
 
-        $suratMasuk->update([
-            'nomor_surat' => $request->nomor_surat,
-            'tanggal_surat' => $request->tanggal_surat,
-            'asal_surat' => $request->asal_surat,
-            'uraian' => $request->uraian,
-            'keterangan' => $request->keterangan,
-            'link_google_drive' => $request->link_google_drive,
-            'updated_by' => auth()->id(),
-        ]);
+        DB::transaction(function () use ($request, $suratMasuk) {
+            $finalAsalSurat = InstansiPengirim::findOrRegister($request->asal_surat);
+
+            $suratMasuk->update([
+                'nomor_surat' => $request->nomor_surat,
+                'tanggal_surat' => $request->tanggal_surat,
+                'asal_surat' => $finalAsalSurat,
+                'uraian' => $request->uraian,
+                'keterangan' => $request->keterangan,
+                'link_google_drive' => $request->link_google_drive,
+                'updated_by' => auth()->id(),
+            ]);
+        });
 
         return redirect()->route('surat-masuk.index')->with('success', 'Data Surat Masuk berhasil diperbarui!');
     }
@@ -261,6 +267,25 @@ class SuratMasukController extends Controller
         $suratMasuk->delete();
 
         return redirect()->route('surat-masuk.index')->with('success', 'Data Surat Masuk berhasil dihapus!');
+    }
+
+    /**
+     * Endpoint API pengecekan duplikat Surat Masuk (Nomor Surat + Asal Surat) secara real-time.
+     * Bersifat peringatan (non-blokir).
+     */
+    public function checkSuratMasukDuplikatApi(Request $request)
+    {
+        $nomor = $request->get('nomor_surat');
+        $asal = $request->get('asal_surat');
+        $excludeId = $request->get('exclude_id');
+
+        $result = \App\Services\NomorSuratService::checkSuratMasukDuplicate($nomor, $asal, $excludeId);
+
+        return response()->json([
+            'is_duplicate' => (bool)$result,
+            'message' => $result['message'] ?? 'Kombinasi Nomor Surat dan Asal Surat belum pernah tercatat.',
+            'data' => $result,
+        ]);
     }
 
     /**

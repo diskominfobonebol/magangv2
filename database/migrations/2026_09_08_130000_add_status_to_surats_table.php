@@ -12,12 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('surats', function (Blueprint $table) {
+            if (!Schema::hasColumn('surats', 'has_sppd')) {
+                $table->boolean('has_sppd')->default(false)->after('keterangan');
+            }
             if (!Schema::hasColumn('surats', 'status')) {
-                if (Schema::hasColumn('surats', 'has_sppd')) {
-                    $table->string('status', 20)->default('Terbit')->after('has_sppd');
-                } else {
-                    $table->string('status', 20)->default('Terbit');
-                }
+                $table->string('status', 20)->default('Terbit')->after('has_sppd');
             }
         });
     }

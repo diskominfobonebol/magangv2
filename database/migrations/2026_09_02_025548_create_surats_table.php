@@ -21,6 +21,7 @@ return new class extends Migration
             $table->text('uraian');
             $table->string('tujuan');
             $table->text('keterangan')->nullable();
+            $table->boolean('has_sppd')->default(false);
             $table->foreignId('created_by')->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
             $table->timestamps();

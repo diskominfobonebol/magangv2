@@ -22,7 +22,7 @@ class SuratTest extends TestCase
     public function test_surat_index_can_be_accessed_by_admin(): void
     {
         $admin = User::where('email', 'admin@kominfo.bonebolango.id')->first();
-        $response = $this->actingAs($admin)->get('/surat');
+        $response = $this->actingAs($admin)->get('/surat/keluar');
 
         $response->assertStatus(200);
         $response->assertViewHasAll(['surats', 'totalSpt', 'totalSppd', 'totalBulanIni', 'allPegawais', 'nextSppdCounter']);
@@ -31,7 +31,7 @@ class SuratTest extends TestCase
     public function test_surat_index_can_be_accessed_by_kasubag(): void
     {
         $kasubag = User::where('email', 'kasubag@kominfo.bonebolango.go.id')->first();
-        $response = $this->actingAs($kasubag)->get('/surat');
+        $response = $this->actingAs($kasubag)->get('/surat/keluar');
 
         $response->assertStatus(200);
     }
@@ -41,15 +41,15 @@ class SuratTest extends TestCase
         $admin = User::where('email', 'admin@kominfo.bonebolango.id')->first();
 
         // Test with SPT filter
-        $responseSpt = $this->actingAs($admin)->get('/surat?filter_jenis=SPT');
+        $responseSpt = $this->actingAs($admin)->get('/surat/keluar?filter_jenis=SPT');
         $responseSpt->assertStatus(200);
 
         // Test with SPPD filter
-        $responseSppd = $this->actingAs($admin)->get('/surat?filter_jenis=SPPD');
+        $responseSppd = $this->actingAs($admin)->get('/surat/keluar?filter_jenis=SPPD');
         $responseSppd->assertStatus(200);
 
         // Test with Search filter
-        $responseSearch = $this->actingAs($admin)->get('/surat?search=Dinas');
+        $responseSearch = $this->actingAs($admin)->get('/surat/keluar?search=Dinas');
         $responseSearch->assertStatus(200);
     }
 
@@ -63,8 +63,8 @@ class SuratTest extends TestCase
 
     public function test_next_sppd_counter_api(): void
     {
-        $admin = User::where('email', 'admin@kominfo.bonebolango.id')->first();
-        $response = $this->actingAs($admin)->get('/surat/api/next-sppd-counter');
+        $kasubag = User::where('email', 'kasubag@kominfo.bonebolango.go.id')->first();
+        $response = $this->actingAs($kasubag)->get('/surat/api/next-sppd-counter');
 
         $response->assertStatus(200);
         $response->assertJsonStructure(['next_counter']);
@@ -72,8 +72,10 @@ class SuratTest extends TestCase
 
     public function test_create_step_2_only_includes_structural_pegawai(): void
     {
-        $admin = User::where('email', 'admin@kominfo.bonebolango.id')->first();
-        $response = $this->actingAs($admin)->get('/surat/create/step-2');
+        $kasubag = User::where('email', 'kasubag@kominfo.bonebolango.go.id')->first();
+        $response = $this->actingAs($kasubag)
+            ->withSession(['s_tgl_surat' => now()->format('Y-m-d')])
+            ->get('/surat/create/step-2');
 
         $response->assertStatus(200);
         $response->assertViewHas('pegawais');
@@ -93,8 +95,8 @@ class SuratTest extends TestCase
 
     public function test_store_pegawai_p3k_api(): void
     {
-        $admin = User::where('email', 'admin@kominfo.bonebolango.id')->first();
-        $response = $this->actingAs($admin)->postJson('/surat/api/pegawai-p3k', [
+        $kasubag = User::where('email', 'kasubag@kominfo.bonebolango.go.id')->first();
+        $response = $this->actingAs($kasubag)->postJson('/surat/api/pegawai-p3k', [
             'nama' => 'Tenaga Honorer Test',
             'nip' => '19950101P3K01',
             'jabatan' => 'Tenaga IT',

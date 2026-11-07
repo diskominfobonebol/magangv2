@@ -46,10 +46,27 @@ class PegawaiSeeder extends Seeder
             ['nip' => '197709052002121001', 'nama' => 'Drs. H. M. Alwi, M.I.Kom', 'pangkat_golongan' => 'Pembina Tk. I / IV/b', 'jabatan' => 'Kepala Bidang Komunikasi', 'no_wa' => '081234567820'],
             ['nip' => '199012012015022002', 'nama' => 'Nurfadilah, S.I.Kom', 'pangkat_golongan' => 'Penata Tk. I / III/d', 'jabatan' => 'Staff Kemitraan & Komunikasi Publik', 'no_wa' => '081234567821'],
             ['nip' => '199505142019031005', 'nama' => 'Yusuf Bahtiar, S.Sos', 'pangkat_golongan' => 'Penata Muda / III/a', 'jabatan' => 'Staff Layanan Informasi & Media', 'no_wa' => '081234567822'],
+
+            // Pegawai Pemerintah dengan Perjanjian Kerja (P3K)
+            ['nip' => '199503152023211001', 'nama' => 'Ahmad Fauzi, S.Kom', 'pangkat_golongan' => 'Golongan IX', 'jabatan' => 'Ahli Pertama - Pranata Komputer', 'no_wa' => '081234567830', 'kategori_pegawai' => 'P3K'],
+            ['nip' => '199607142023212002', 'nama' => 'Siti Rahmah, S.AP', 'pangkat_golongan' => 'Golongan IX', 'jabatan' => 'Ahli Pertama - Analis Kebijakan', 'no_wa' => '081234567831', 'kategori_pegawai' => 'P3K'],
+            ['nip' => '199801102023211003', 'nama' => 'Budi Santoso, A.Md', 'pangkat_golongan' => 'Golongan VII', 'jabatan' => 'Terampil - Pranata Komputer', 'no_wa' => '081234567832', 'kategori_pegawai' => 'P3K'],
         ];
 
         foreach ($pegawai as $data) {
+            $user = \App\Models\User::firstOrCreate(
+                ['email' => $data['nip']],
+                [
+                    'name' => $data['nama'],
+                    'password' => \Illuminate\Support\Facades\Hash::make('123456'),
+                    'role_id' => 3,
+                    'is_active' => true,
+                ]
+            );
+
+            $data['user_id'] = $user->id;
             $data['kategori_pegawai'] = $data['kategori_pegawai'] ?? 'ASN';
+
             Pegawai::updateOrCreate(
                 ['nip' => $data['nip']],
                 $data

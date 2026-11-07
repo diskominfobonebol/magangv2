@@ -4,18 +4,6 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto space-y-6" x-data="suratMasukManager()">
-    
-    <!-- Sub-Tab Navigasi Modul Surat Menyurat -->
-    <div class="flex items-center gap-2 border-b border-blue-200/60 pb-3">
-        <a href="{{ route('surat.index') }}" class="px-5 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 bg-white text-slate-600 hover:text-primary hover:bg-blue-50/60 border border-blue-200/50 shadow-sm">
-            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-            Surat Keluar (SPT & SPPD)
-        </a>
-        <a href="{{ route('surat-masuk.index') }}" class="px-5 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 bg-primary text-white shadow-md shadow-blue-500/25">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
-            Surat Masuk
-        </a>
-    </div>
 
     <!-- Header Utama & Tombol Aksi -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -24,6 +12,10 @@
             <p class="text-slate-500 mt-1 text-sm">Pencatatan dan arsip surat yang diterima dari pihak luar / instansi lain.</p>
         </div>
         <div class="flex items-center gap-3">
+            <a href="{{ route('surat-masuk.instansi.index') }}" class="btn-pill-secondary px-4 py-2.5 text-xs font-bold gap-2 shadow-sm flex items-center hover:text-primary transition-all">
+                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                Kelola Instansi
+            </a>
             <a href="{{ route('surat-masuk.export-pdf', request()->query()) }}" target="_blank" class="btn-pill-secondary px-5 py-2.5 text-xs font-bold gap-2 shadow-sm flex items-center hover:text-primary transition-all">
                 <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 Export Rekapitulasi PDF
@@ -139,7 +131,7 @@
                     <div class="flex items-center gap-2 mb-1">
                         <p class="text-xs font-bold uppercase tracking-wider {{ $isAllActive ? 'text-primary' : 'text-slate-400 group-hover:text-primary' }} transition-colors">Total Surat Masuk</p>
                         @if($isAllActive)
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary text-white shadow-sm">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary text-white shadow-xs">
                             <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                             Filter Aktif
                         </span>
@@ -151,8 +143,7 @@
                     📥
                 </div>
             </div>
-            <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-500 border-t {{ $isAllActive ? 'border-primary/20' : 'border-blue-100/50' }}">
-                <span class="font-medium text-slate-600">Seluruh Arsip Diterima</span>
+            <div class="mt-4 pt-3 flex items-center justify-end text-xs text-slate-500 border-t {{ $isAllActive ? 'border-primary/20' : 'border-blue-100/50' }}">
                 <span class="{{ $isAllActive ? 'text-primary font-extrabold' : 'text-primary font-bold' }} flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                     Semua Waktu
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
@@ -170,7 +161,7 @@
                     <div class="flex items-center gap-2 mb-1">
                         <p class="text-xs font-bold uppercase tracking-wider {{ $isMonthActive ? 'text-pink-600' : 'text-slate-400 group-hover:text-pink-600' }} transition-colors">Surat Masuk Bulan Ini</p>
                         @if($isMonthActive)
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-pink-500 text-white shadow-sm">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-pink-500 text-white shadow-xs">
                             <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                             Filter Aktif
                         </span>
@@ -182,8 +173,7 @@
                     📅
                 </div>
             </div>
-            <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-500 border-t {{ $isMonthActive ? 'border-pink-200' : 'border-blue-100/50' }}">
-                <span class="font-medium text-slate-600">Periode {{ \Carbon\Carbon::now()->translatedFormat('F Y') }}</span>
+            <div class="mt-4 pt-3 flex items-center justify-end text-xs text-slate-500 border-t {{ $isMonthActive ? 'border-pink-200' : 'border-blue-100/50' }}">
                 <span class="{{ $isMonthActive ? 'text-pink-600 font-extrabold' : 'text-pink-600 font-bold' }} flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                     Bulan Ini
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
@@ -201,7 +191,7 @@
                     <div class="flex items-center gap-2 mb-1">
                         <p class="text-xs font-bold uppercase tracking-wider {{ $isYearActive ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-600' }} transition-colors">Surat Masuk Tahun Ini</p>
                         @if($isYearActive)
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500 text-white shadow-sm">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500 text-white shadow-xs">
                             <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                             Filter Aktif
                         </span>
@@ -213,8 +203,7 @@
                     📂
                 </div>
             </div>
-            <div class="mt-4 pt-3 flex items-center justify-between text-xs text-slate-500 border-t {{ $isYearActive ? 'border-indigo-200' : 'border-blue-100/50' }}">
-                <span class="font-medium text-slate-600">Tahun {{ date('Y') }}</span>
+            <div class="mt-4 pt-3 flex items-center justify-end text-xs text-slate-500 border-t {{ $isYearActive ? 'border-indigo-200' : 'border-blue-100/50' }}">
                 <span class="{{ $isYearActive ? 'text-indigo-600 font-extrabold' : 'text-indigo-600 font-bold' }} flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                     Tahun Berjalan
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
@@ -513,7 +502,7 @@
                 <button type="button" @click="cancelDelete()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer">
                     Batal
                 </button>
-                <form :action="'/surat/masuk/' + deleteSuratId" method="POST" class="inline">
+                <form :action="'{{ url('surat/masuk') }}/' + deleteSuratId" method="POST" class="inline">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-500/25 flex items-center gap-1.5 transition-all cursor-pointer">

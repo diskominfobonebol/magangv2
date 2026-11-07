@@ -28,6 +28,7 @@ class UserSeeder extends Seeder
                     'password' => bcrypt('password'),
                     'role_id' => $userData['role_id'],
                     'is_active' => true,
+                    'must_change_password' => false,
                 ]
             );
 

@@ -38,11 +38,8 @@
         <tr>
             <!-- Kolom Logo di Kiri (Logo Pemda Bone Bolango) -->
             <td style="width: 15%; vertical-align: middle; text-align: center; border: none; padding-bottom: 10px;">
-                @php
-                    $printPemda = file_exists(public_path('images/logo-pemda-transparent.png')) ? 'images/logo-pemda-transparent.png' : 'images/bonebolango.png';
-                @endphp
-                @if(file_exists(public_path($printPemda)))
-                    <img src="{{ ($isPdf ?? false) ? public_path($printPemda) : asset($printPemda) }}" alt="Logo Bone Bolango" style="width: 65px; height: auto;">
+                @if(file_exists(public_path('images/bonebolango.png')))
+                    <img src="{{ ($isPdf ?? false) ? public_path('images/bonebolango.png') : asset('images/bonebolango.png') }}" alt="Logo Bone Bolango" style="width: 65px; height: auto;">
                 @endif
             </td>
             
@@ -56,11 +53,8 @@
             
             <!-- Kolom Logo di Kanan (Logo Kominfo) -->
             <td style="width: 15%; vertical-align: middle; text-align: center; border: none; padding-bottom: 10px;">
-                @php
-                    $printKominfo = file_exists(public_path('images/logo-kominfo-transparent.png')) ? 'images/logo-kominfo-transparent.png' : 'images/logo-kominfo.png';
-                @endphp
-                @if(file_exists(public_path($printKominfo)))
-                    <img src="{{ ($isPdf ?? false) ? public_path($printKominfo) : asset($printKominfo) }}" alt="Logo Kominfo" style="width: 75px; height: auto;">
+                @if(file_exists(public_path('images/logo-kominfo.png')))
+                    <img src="{{ ($isPdf ?? false) ? public_path('images/logo-kominfo.png') : asset('images/logo-kominfo.png') }}" alt="Logo Kominfo" style="width: 75px; height: auto;">
                 @endif
             </td>
         </tr>
@@ -121,8 +115,8 @@
     <div class="ttd">
         Ditetapkan di Gorontalo<br>
         pada tanggal {{ \Carbon\Carbon::parse($surat->tgl_surat)->translatedFormat('d F Y') }}<br>
-        <div class="nama-ttd">Drs. H. Syamsuddin, M.Si</div>
-        NIP. 196502121990031004
+        <div class="nama-ttd">ICHSAN BUDIMAN WANTOGIA, S.Pi,M.Adm.Pemb</div>
+        NIP. 197204102003121008
     </div>
     <div style="clear: both;"></div>
 

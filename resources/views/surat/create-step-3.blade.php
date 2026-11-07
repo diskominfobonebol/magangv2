@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Buat Surat Baru - Langkah 3')
+@section('title', 'Buat Surat Baru - Langkah 3 (Nomor SPPD)')
 
 @section('content')
 <div class="max-w-4xl mx-auto space-y-6">
@@ -13,7 +13,7 @@
             <li>
                 <div class="flex items-center">
                     <span class="mx-2 text-slate-300">/</span>
-                    <a href="{{ route('surat.create') }}" class="hover:text-primary transition-colors font-semibold">Buat Surat</a>
+                    <a href="{{ route('surat.create') }}" class="hover:text-primary transition-colors font-semibold">Buat SPT</a>
                 </div>
             </li>
             <li>
@@ -32,8 +32,8 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
             </a>
             <div>
-                <h2 class="text-2xl font-bold text-navy">Buat Surat Baru</h2>
-                <p class="text-xs text-slate-500 font-semibold">Langkah 3 dari 3</p>
+                <h2 class="text-2xl font-bold text-navy">Buat Nomor SPT Baru</h2>
+                <p class="text-xs text-slate-500 font-semibold">Langkah 3 dari 3 &bull; Opsi Penerbitan SPPD Terkait</p>
             </div>
         </div>
         <a href="{{ route('surat.index') }}" class="btn-pill-secondary px-4 py-2 text-xs font-bold flex items-center gap-1.5 text-slate-600 hover:text-red-600 transition-colors">
@@ -55,6 +55,16 @@
     </div>
     @endif
 
+    @if(isset($errors) && $errors->any())
+    <div class="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-semibold shadow-sm">
+        <ul class="list-disc pl-5 space-y-1">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+
     <!-- Stepper -->
     <div class="py-2 flex items-center justify-center">
         <!-- Step 1 (Completed) -->
@@ -62,7 +72,7 @@
             <div class="flex items-center justify-center w-7 h-7 rounded-full text-white font-bold text-xs shadow-sm" style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
             </div>
-            <span class="ml-2 text-xs font-semibold text-slate-400">Informasi Surat</span>
+            <span class="ml-2 text-xs font-semibold text-slate-400">Informasi SPT</span>
         </div>
         <!-- Divider -->
         <div class="w-12 border-t-2 border-primary mx-2"></div>
@@ -89,107 +99,227 @@
     <!-- Form Container -->
     <div class="bg-card-gradient rounded-3xl shadow-xl shadow-blue-900/5 border border-blue-200/50 overflow-hidden" 
          x-data="{ 
-             pilihanSppd: null, 
-             tempPilihan: 'ya',
+             pilihanSppd: 'ya', 
+             submitting: false,
+
              simpanDraft(e) {
-                 e.preventDefault();
+                 if (e) e.preventDefault();
+                 if (this.submitting) return false;
+                 this.submitting = true;
                  const form = document.getElementById('form-utama');
                  form.action = '{{ route('surat.draft') }}';
                  form.submit();
+             },
+
+             submitTerbitkan(e) {
+                 if (this.submitting) {
+                     if (e) e.preventDefault();
+                     return false;
+                 }
+                 this.submitting = true;
              }
          }">
-        <form action="{{ route('surat.store') }}" method="POST" class="p-6 md:p-8" id="form-utama">
+        <form action="{{ route('surat.store') }}" method="POST" enctype="multipart/form-data" class="p-6 md:p-8" id="form-utama" @submit="submitTerbitkan($event)" x-data="{ selectedFileName: '', selectedFileSize: '', isDragging: false }">
             @csrf
             
-            <input type="hidden" name="has_sppd" x-bind:value="pilihanSppd === 'ya' ? 1 : 0">
-            <input type="hidden" name="tgl_surat" value="{{ session('s_tgl_surat') }}">
-            <input type="hidden" name="tujuan" value="{{ session('s_tujuan') }}">
-            <input type="hidden" name="jenis_surat_id" value="{{ session('s_jenis_surat_id') }}">
-            <input type="hidden" name="uraian" value="{{ session('s_uraian') }}">
-            <input type="hidden" name="keterangan" value="{{ session('s_keterangan') }}">
+            <input type="hidden" name="tgl_surat" value="{{ session('s_tgl_surat', date('Y-m-d')) }}">
+            <input type="hidden" name="tujuan" value="{{ session('s_tujuan', '') }}">
+            <input type="hidden" name="jenis_surat_id" value="2">
+            <input type="hidden" name="uraian" value="{{ session('s_uraian', '') }}">
+            <input type="hidden" name="keterangan" value="{{ session('s_keterangan', '') }}">
+            <input type="hidden" name="has_sppd" :value="pilihanSppd === 'ya' ? 1 : 0">
             
             @if(session('s_pegawai_id'))
                 @foreach(session('s_pegawai_id') as $pid)
                     <input type="hidden" name="pegawai_id[]" value="{{ $pid }}">
                 @endforeach
             @endif
-                
+
             <div class="space-y-6">
-                <div class="border border-blue-200/60 rounded-3xl p-6 bg-white/50">
-                    <!-- Kondisi A: Belum Memilih (Menggunakan Dropdown) -->
-                    <div x-show="pilihanSppd === null" x-transition>
-                        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 mb-6">
-                            <div class="text-amber-600 mt-0.5">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <!-- Section Pilihan Penerbitan SPPD -->
+                <div class="border border-blue-200/60 rounded-3xl p-6 bg-white/60 space-y-5">
+                    <div>
+                        <h3 class="text-sm font-bold text-navy flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-blue-100 text-primary flex items-center justify-center text-xs font-bold">✈️</span>
+                            Penerbitan Surat Perintah Perjalanan Dinas (SPPD) Terkait
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1">Pilih apakah surat tugas ini langsung disertai penomoran SPPD untuk setiap personil:</p>
+                    </div>
+
+                    <!-- Dual Option Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Card 1: Dengan SPPD (Default) -->
+                        <div @click="pilihanSppd = 'ya'" 
+                             :class="pilihanSppd === 'ya' ? 'border-primary ring-2 ring-blue-500/40 bg-blue-50/50 shadow-md shadow-blue-500/10' : 'border-slate-200 bg-white hover:border-blue-300'"
+                             class="rounded-2xl border p-4 cursor-pointer transition-all">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-xl flex items-center justify-center font-bold"
+                                         :class="pilihanSppd === 'ya' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'">
+                                        ✓
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-navy">Buat SPPD Sekaligus</h4>
+                                        <p class="text-[11px] text-slate-500">Nomor SPPD otomatis dibuat untuk setiap personel</p>
+                                    </div>
+                                </div>
+                                <span class="badge-blue text-[10px] px-2 py-0.5 rounded-full font-bold" x-show="pilihanSppd === 'ya'">Dipilih</span>
                             </div>
+                        </div>
+
+                        <!-- Card 2: Tanpa SPPD -->
+                        <div @click="pilihanSppd = 'tidak'" 
+                             :class="pilihanSppd === 'tidak' ? 'border-primary ring-2 ring-blue-500/40 bg-blue-50/50 shadow-md shadow-blue-500/10' : 'border-slate-200 bg-white hover:border-blue-300'"
+                             class="rounded-2xl border p-4 cursor-pointer transition-all">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-xl flex items-center justify-center font-bold"
+                                         :class="pilihanSppd === 'tidak' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'">
+                                        ✕
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-navy">Hanya SPT (Tanpa SPPD)</h4>
+                                        <p class="text-[11px] text-slate-500">SPPD dapat ditambahkan belakangan jika diperlukan</p>
+                                    </div>
+                                </div>
+                                <span class="badge-blue text-[10px] px-2 py-0.5 rounded-full font-bold" x-show="pilihanSppd === 'tidak'">Dipilih</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel Detail Opsi A: SPPD Aktif -->
+                    <div x-show="pilihanSppd === 'ya'" x-transition class="bg-white/90 border border-blue-200/60 rounded-2xl p-4 space-y-3">
+                        @if(isset($sppdEval) && $sppdEval['is_backdate'])
+                        <div class="p-3 bg-amber-50/90 border border-amber-300/80 rounded-xl text-xs text-amber-900 font-semibold flex items-start gap-2 shadow-sm">
+                            <svg class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             <div>
-                                <h4 class="text-sm font-bold text-amber-800">Generate Nomor SPPD</h4>
-                                <p class="text-xs text-amber-700 mt-1 font-medium">SPT ini dapat memiliki SPPD terkait. Apakah surat ini disertai SPPD?</p>
+                                <span>{{ $sppdEval['notice'] }}</span>
                             </div>
                         </div>
+                        @endif
 
-                        <div class="flex items-center gap-3">
-                            <select x-model="tempPilihan" class="form-input flex-1">
-                                <option value="ya">Ya, ada SPPD terkait</option>
-                                <option value="tidak">Lewati, tidak ada SPPD</option>
-                            </select>
-                            <button type="button" @click="pilihanSppd = tempPilihan" class="btn-pill-primary px-5 py-2.5 text-xs font-bold cursor-pointer">
-                                Konfirmasi
-                            </button>
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                            <span class="text-xs font-bold text-navy">Daftar Personel & Preview Nomor SPPD Otomatis:</span>
+                            <span class="text-[11px] text-primary font-bold">{{ isset($selectedPegawais) ? $selectedPegawais->count() : 0 }} Personel</span>
                         </div>
-                    </div>
-
-                    <!-- Kondisi B: Memilih Tidak -->
-                    <div x-show="pilihanSppd === 'tidak'" style="display: none;" x-transition class="flex items-center gap-3 py-4">
-                        <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
-                        <span class="text-sm font-bold text-navy">Surat ini tidak memiliki SPPD terkait.</span>
-                        <button type="button" @click="pilihanSppd = null" class="ml-2 text-xs text-primary font-bold hover:underline cursor-pointer">
-                            Ubah Pilihan
-                        </button>
-                    </div>
-
-                    <!-- Kondisi C: Memilih Ya -->
-                    <div x-show="pilihanSppd === 'ya'" style="display: none;" x-transition>
-                        <div class="flex items-center gap-3 mb-4">
-                            <div class="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center flex-shrink-0">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                            </div>
-                            <span class="text-sm font-bold text-navy">SPPD Terkait Akan Dibuat</span>
-                            <button type="button" @click="pilihanSppd = null" class="ml-2 text-xs text-primary font-bold hover:underline cursor-pointer">
-                                Ubah Pilihan
-                            </button>
-                        </div>
-                        <p class="text-xs text-slate-500 mb-4 font-medium">Sistem akan menggenerate nomor SPPD otomatis untuk seluruh personel yang ditugaskan setelah surat diterbitkan.</p>
                         
-                        <!-- Preview Personel SPPD -->
-                        <div class="bg-white/80 border border-blue-200/60 rounded-2xl p-4">
-                            <ul class="space-y-3">
-                                @if(isset($selectedPegawais) && $selectedPegawais->count() > 0)
-                                    @foreach($selectedPegawais as $pegawai)
-                                    <li class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl hover:bg-blue-50/40 transition-colors border border-blue-100/50">
-                                        <div>
-                                            <span class="font-bold text-navy text-sm">{{ $pegawai->nama }}</span>
-                                            <span class="text-slate-500 text-xs ml-2 font-medium">NIP. {{ $pegawai->nip }} &bull; {{ $pegawai->jabatan }}</span>
+                        @php
+                            $isManualMode = (session('s_mode_nomor') === 'manual') || (isset($sppdEval['is_backdate']) && $sppdEval['is_backdate']);
+                        @endphp
+
+                        <ul class="space-y-3">
+                            @if(isset($selectedPegawais) && $selectedPegawais->count() > 0)
+                                @foreach($selectedPegawais as $pegawai)
+                                <li class="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-xl hover:bg-blue-50/40 transition-colors border border-blue-100/60 bg-slate-50/40"
+                                    x-data="{ 
+                                        manualVal: '{{ $sppdPreviews[$pegawai->id] ?? '' }}',
+                                        isDup: false,
+                                        dupMsg: '',
+                                        checkDup() {
+                                            const v = (this.manualVal || '').trim();
+                                            if (!v) { this.isDup = false; return; }
+                                            fetch(`/surat/api/check-nomor-duplikat?nomor=${encodeURIComponent(v)}`)
+                                                .then(r => r.json())
+                                                .then(d => {
+                                                    if (d && d.is_duplicate) {
+                                                        this.isDup = true;
+                                                        this.dupMsg = d.message || 'Nomor duplikat';
+                                                    } else {
+                                                        this.isDup = false;
+                                                    }
+                                                });
+                                        }
+                                    }">
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-bold text-navy text-xs">{{ $pegawai->nama }}</span>
+                                            <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold {{ ($pegawai->kategori_pegawai ?? 'ASN') === 'P3K' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200' }}">
+                                                {{ $pegawai->kategori_pegawai ?? 'ASN' }}
+                                            </span>
                                         </div>
+                                        <span class="text-slate-400 text-[11px] block mt-0.5">{{ ($pegawai->kategori_pegawai === 'P3K' ? 'No. Identitas: ' : 'NIP. ') . ($pegawai->nip ?: '-') }} &bull; {{ $pegawai->jabatan }}</span>
+                                    </div>
+                                    <div class="flex flex-col items-end gap-1">
                                         <div class="flex items-center gap-2">
                                             <span class="text-xs font-semibold text-slate-400">No. SPPD:</span>
-                                            <span class="badge-pink text-xs font-mono px-3 py-1 rounded-full font-bold">
-                                                {{ $sppdPreviews[$pegawai->id] ?? '090/001/...' }}
-                                            </span>
-                                            <input type="hidden" name="nomor_sppd[{{ $pegawai->id }}]" value="{{ $sppdPreviews[$pegawai->id] ?? '' }}">
+                                            @if($isManualMode)
+                                                <input type="text" 
+                                                       name="nomor_sppd[{{ $pegawai->id }}]" 
+                                                       x-model="manualVal"
+                                                       @input.debounce.400ms="checkDup()"
+                                                       placeholder="090/KOMINFO-BB/SPPD/DD/..."
+                                                       class="form-input text-xs font-mono !py-1 !px-2.5 w-64 font-bold"
+                                                       :class="{ '!border-rose-400 !bg-rose-50/40': isDup }">
+                                            @else
+                                                <span class="badge-pink text-xs font-mono px-3 py-1 rounded-full font-bold">
+                                                    {{ $sppdPreviews[$pegawai->id] ?? '090/KOMINFO-BB/SPPD/DD/001/' . ($bln ?? 'IX') . '/' . ($thn ?? date('Y')) }}
+                                                </span>
+                                                <input type="hidden" name="nomor_sppd[{{ $pegawai->id }}]" value="{{ $sppdPreviews[$pegawai->id] ?? '' }}">
+                                            @endif
                                         </div>
-                                    </li>
-                                    @endforeach
-                                @else
-                                    <li class="text-xs text-slate-400 italic">Tidak ada personel yang dipilih.</li>
-                                @endif
-                            </ul>
+                                        <template x-if="isDup">
+                                            <span class="text-[11px] text-rose-600 font-bold" x-text="dupMsg"></span>
+                                        </template>
+                                    </div>
+                                </li>
+                                @endforeach
+                            @else
+                                <li class="text-xs text-rose-500 italic p-3 text-center bg-rose-50 rounded-xl">
+                                    Peringatan: Belum ada personel yang dipilih dari Langkah 2. Silakan kembali ke Langkah 2 untuk memilih personel.
+                                </li>
+                            @endif
+                        </ul>
+                    </div>
+
+                    <!-- Panel Detail Opsi B: Tanpa SPPD -->
+                    <div x-show="pilihanSppd === 'tidak'" x-transition style="display: none;" class="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center flex-shrink-0">
+                            ℹ️
                         </div>
+                        <p class="text-xs text-slate-600">
+                            Surat Perintah Tugas (SPT) akan diterbitkan tanpa surat SPPD. Anda sewaktu-waktu dapat menambahkan SPPD susulan melalui halaman <strong>Detail Nomor Surat</strong>.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Section Link Google Drive Bukti Fisik (Pola Konsisten Surat Masuk) -->
+                <div class="border border-blue-200/60 rounded-3xl p-6 bg-white/60 space-y-4">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <h3 class="text-sm font-bold text-navy flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">🔗</span>
+                                Link Google Drive Bukti Fisik <span class="text-slate-400 font-normal text-xs lowercase">(opsional)</span>
+                            </h3>
+                            <p class="text-xs text-slate-500 mt-1">
+                                Tautan ke scan atau foto surat fisik yang telah ditandatangani dan diunggah ke Google Drive.
+                            </p>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                            Bisa Diisi Nanti
+                        </span>
+                    </div>
+
+                    <div>
+                        <label for="link_google_drive" class="form-label text-xs">Link Google Drive</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                            </div>
+                            <input type="url" 
+                                   id="link_google_drive" 
+                                   name="link_google_drive" 
+                                   value="{{ old('link_google_drive', session('s_link_google_drive', '')) }}" 
+                                   placeholder="https://drive.google.com/file/d/.../view?usp=sharing" 
+                                   class="form-input !pl-10 font-mono text-xs @error('link_google_drive') !border-rose-400 !ring-1 !ring-rose-400 @enderror">
+                        </div>
+                        <span class="text-[11px] text-slate-400 mt-1 block">Pastikan link Google Drive sudah diatur agar memiliki akses baca bagi yang berkepentingan.</span>
+                        @error('link_google_drive')
+                            <p class="text-[11px] text-rose-600 font-bold mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
             </div>
+
 
             <!-- Footer Buttons -->
             <div class="mt-8 pt-5 border-t border-blue-200/40 flex items-center justify-between">
@@ -204,12 +334,16 @@
                 </div>
                 <div class="flex items-center gap-3">
                     <!-- Tombol Simpan Draft -->
-                    <button type="button" @click="simpanDraft($event)" class="btn-pill-secondary px-5 py-2.5 text-xs font-bold cursor-pointer">
-                        Simpan Draft
+                    <button type="button" @click="simpanDraft($event)" :disabled="submitting" :class="submitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'" class="btn-pill-secondary px-5 py-2.5 text-xs font-bold">
+                        <span x-text="submitting ? 'Menyimpan...' : 'Simpan Draft'"></span>
                     </button>
                     <!-- Tombol Terbitkan (Milik form utama) -->
-                    <button type="submit" class="btn-pill-primary px-6 py-2.5 text-xs font-bold gap-2 shadow-md cursor-pointer">
-                        Terbitkan Surat
+                    <button type="submit" 
+                            :disabled="submitting"
+                            :class="submitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'"
+                            class="btn-pill-primary px-6 py-2.5 text-xs font-bold gap-2 shadow-md flex items-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span x-text="submitting ? 'Memproses...' : (pilihanSppd === 'ya' ? 'Terbitkan SPT & SPPD' : 'Terbitkan Surat SPT')"></span>
                     </button>
                 </div>
             </div>
