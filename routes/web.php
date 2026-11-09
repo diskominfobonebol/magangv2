@@ -14,6 +14,8 @@ use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\InstansiPengirimController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ArsipDokumenController;
+use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\MahasiswaController;
 use App\Http\Controllers\PasswordResetController;
 use App\Models\Setting;
@@ -45,6 +47,8 @@ Route::get('/magang', function () {
 Route::get('/aset/{id}/qr-image', [AdminController::class, 'qrImage'])->name('aset.qr_image')->where('id', '.*');
 Route::get('/aset/{id}', [AdminController::class, 'publicDetail'])->name('aset.public_detail')->where('id', '^(?!export-pdf$).*');
 Route::get('/api/aset/{id}', [AdminController::class, 'apiDetail'])->name('api.aset.detail')->where('id', '.*');
+Route::get('/berita-acara/{id}/preview', [AdminController::class, 'previewBeritaAcara'])->name('berita_acara.preview');
+Route::get('/berita-acara/{id}/download-pdf', [AdminController::class, 'downloadPdfBeritaAcara'])->name('berita_acara.download_pdf');
 
 // Rute Login & Logout
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -72,19 +76,31 @@ Route::middleware(['auth', 'force.password.reset', 'two_factor'])->group(functio
     // Rute Wajib Ganti Password (Semua Role saat must_change_password = true)
     Route::get('/reset-password-wajib', [AuthController::class, 'showForceResetPassword'])->name('password.force_reset');
     Route::post('/reset-password-wajib', [AuthController::class, 'forceResetPassword'])->name('password.force_reset.update');
+    Route::get('/security/change-password', [SecurityController::class, 'showChangePassword'])->name('password.change');
+    Route::post('/security/change-password', [SecurityController::class, 'updatePassword'])->name('password.change.update');
 
     // Rute 2FA (Setup, Konfirmasi, Recovery Codes, dan Verifikasi Rutin)
     Route::get('/2fa/setup', [TwoFactorController::class, 'showSetup'])->name('2fa.setup');
     Route::post('/2fa/setup', [TwoFactorController::class, 'confirmSetup'])->name('2fa.setup.confirm');
+    Route::get('/security/2fa/setup', [SecurityController::class, 'showTwoFactorSetup']);
+    Route::post('/security/2fa/setup', [SecurityController::class, 'confirmTwoFactorSetup']);
+
     Route::get('/2fa/recovery-codes', [TwoFactorController::class, 'showRecoveryCodes'])->name('2fa.recovery-codes');
     Route::post('/2fa/recovery-codes', [TwoFactorController::class, 'acknowledgeRecoveryCodes'])->name('2fa.recovery-codes.acknowledge');
+    Route::get('/security/2fa/recovery-codes', [SecurityController::class, 'showRecoveryCodes'])->name('2fa.recovery_codes');
+    Route::post('/security/2fa/recovery-codes', [SecurityController::class, 'ackRecoveryCodes'])->name('2fa.recovery_codes.ack');
+
     Route::get('/2fa/verify', [TwoFactorController::class, 'showVerify'])->name('2fa.verify');
     Route::post('/2fa/verify', [TwoFactorController::class, 'verify'])->name('2fa.verify.check');
+    Route::get('/security/2fa/verify', [SecurityController::class, 'showTwoFactorVerify']);
+    Route::post('/security/2fa/verify', [SecurityController::class, 'checkTwoFactorVerify']);
 
     // Halaman Keamanan Akun (dapat diakses dari header profile dropdown)
     Route::get('/keamanan-akun', [TwoFactorController::class, 'showAccountSecurity'])->name('account.security');
     Route::post('/keamanan-akun/regenerate-recovery-codes', [TwoFactorController::class, 'regenerateRecoveryCodes'])->name('account.security.regenerate-recovery-codes');
     Route::post('/keamanan-akun/re-enroll', [TwoFactorController::class, 'reEnroll'])->name('account.security.re-enroll');
+    Route::post('/account/security/regenerate-recovery', [SecurityController::class, 'regenerateRecoveryCodes'])->name('account.security.regenerate_recovery');
+    Route::post('/account/security/reset-device', [SecurityController::class, 'resetTwoFactorDevice'])->name('account.security.reset_device');
 
     // Rute Notifikasi (Semua Role Terotentikasi)
     Route::get('/notifikasi', [NotificationController::class, 'index'])->name('notifications.index');
@@ -248,16 +264,50 @@ Route::middleware(['auth', 'force.password.reset', 'two_factor'])->group(functio
     });
 
     // =========================================================================
-    // MODUL MANAJEMEN ASET (BENDAHARA BARANG (4) & ADMIN MASTER (1))
+    // MODUL ARSIP DOKUMEN PEGAWAI (AKSES MANDIRI DOKUMEN SENDIRI)
+    // =========================================================================
+    Route::middleware('role:pegawai,admin,admin_kasubag,kasubag,1,2,3')->group(function () {
+        Route::get('/pegawai/dokumen', [ArsipDokumenController::class, 'myDocuments'])->name('pegawai.dokumen');
+        Route::post('/pegawai/dokumen', [ArsipDokumenController::class, 'storePegawai'])->name('pegawai.dokumen.store');
+        Route::put('/pegawai/dokumen/{id}', [ArsipDokumenController::class, 'updatePegawai'])->name('pegawai.dokumen.update');
+        Route::delete('/pegawai/dokumen/{id}', [ArsipDokumenController::class, 'destroyPegawai'])->name('pegawai.dokumen.destroy');
+        Route::get('/dokumen/{id}/download', [ArsipDokumenController::class, 'download'])->name('dokumen.download');
+        Route::get('/dokumen/{id}/preview', [ArsipDokumenController::class, 'preview'])->name('dokumen.preview');
+    });
+
+    // =========================================================================
+    // MODUL KELOLA ARSIP DOKUMEN & PEGAWAI (KASUBAG & ADMIN MASTER)
+    // =========================================================================
+    Route::middleware('role:admin,admin_kasubag,kasubag,1,2')->group(function () {
+        Route::get('/admin/arsip-dokumen', [ArsipDokumenController::class, 'index'])->name('admin.arsip.index');
+        Route::post('/admin/arsip-dokumen', [ArsipDokumenController::class, 'store'])->name('admin.arsip.store');
+        Route::put('/admin/arsip-dokumen/{id}', [ArsipDokumenController::class, 'update'])->name('admin.arsip.update');
+        Route::delete('/admin/arsip-dokumen/{id}', [ArsipDokumenController::class, 'destroy'])->name('admin.arsip.destroy');
+
+        Route::post('/admin/pegawai/store', [ArsipDokumenController::class, 'storePegawaiAccount'])->name('admin.pegawai.store');
+        Route::put('/admin/pegawai/{id}', [ArsipDokumenController::class, 'updatePegawaiAccount'])->name('admin.pegawai.update');
+        Route::post('/admin/pegawai/{id}/toggle-status', [ArsipDokumenController::class, 'toggleStatusPegawaiAccount'])->name('admin.pegawai.toggle_status');
+        Route::delete('/admin/pegawai/{id}', [ArsipDokumenController::class, 'destroyPegawaiAccount'])->name('admin.pegawai.destroy');
+    });
+
+    // =========================================================================
+    // MODUL MANAJEMEN ASET & BERITA ACARA (BENDAHARA BARANG & ADMIN MASTER)
     // =========================================================================
     Route::middleware('role:bendahara_barang,admin,4,1')->group(function () {
         Route::get('/admin/aset', [AdminController::class, 'aset'])->name('admin.aset');
+        Route::get('/admin/aset/berita-acara', [AdminController::class, 'beritaAcara'])->name('admin.aset.berita_acara');
+        Route::get('/admin/berita-acara/{id}/file', [AdminController::class, 'fileBeritaAcara'])->name('admin.berita_acara.file');
+        Route::get('/admin/berita-acara/{id}/file-doc', [AdminController::class, 'fileBeritaAcara'])->name('admin.berita-acara.file');
+        Route::get('/admin/aset/laporan', [AdminController::class, 'laporanRekap'])->name('admin.aset.laporan');
         Route::get('/admin/aset/laporan/pdf', [AdminController::class, 'exportLaporanPdf'])->name('admin.aset.laporan.pdf');
         Route::get('/admin/aset/export-pdf', [AdminController::class, 'exportLaporanPdf'])->name('admin.aset.export-pdf');
         Route::get('/aset/export-pdf', [AdminController::class, 'exportLaporanPdf'])->name('aset.export');
         Route::post('/admin/aset', [AdminController::class, 'storeAset'])->name('admin.aset.store');
         Route::put('/admin/aset/{no_reg_pemda}', [AdminController::class, 'updateAset'])->name('admin.aset.update')->where('no_reg_pemda', '.*');
         Route::delete('/admin/aset/{no_reg_pemda}', [AdminController::class, 'destroyAset'])->name('admin.aset.destroy')->where('no_reg_pemda', '.*');
+        Route::post('/admin/berita-acara', [AdminController::class, 'storeBeritaAcara'])->name('admin.berita_acara.store');
+        Route::post('/admin/berita-acara/generate', [AdminController::class, 'generateBeritaAcara'])->name('admin.berita_acara.generate');
+        Route::get('/admin/berita-acara/check-nomor', [AdminController::class, 'checkNomorBeritaAcara'])->name('admin.berita_acara.check_nomor');
     });
 
     // =========================================================================

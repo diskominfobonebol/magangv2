@@ -44,6 +44,9 @@ class CheckRole
         ];
 
         $userMatches = $roleNameMap[$userRoleId] ?? [$userRoleId, (string) $userRoleId];
+        if (!empty($user->role)) {
+            $userMatches[] = (string) $user->role;
+        }
 
         foreach ($userMatches as $match) {
             if (in_array($match, $allowedRoles, true)) {

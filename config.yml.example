@@ -1,0 +1,24 @@
+# =====================================================================
+# Konfigurasi Cloudflare Named Tunnel - SIMPATIK ASET
+# Dinas Komunikasi dan Informatika Bone Bolango
+# =====================================================================
+# Ganti <TUNNEL_ID> dengan UUID Tunnel yang dihasilkan saat perintah:
+# .\cloudflared.exe tunnel create simpatik-aset
+#
+# Letak file ini standarnya di: C:\Users\Nazwa\.cloudflared\config.yml
+# atau di direktori project bersama cloudflared.exe
+# =====================================================================
+
+tunnel: <TUNNEL_ID>
+credentials-file: C:\Users\Nazwa\.cloudflared\<TUNNEL_ID>.json
+
+ingress:
+  # Routing hostname publik ke web server lokal Laravel (Port 8000)
+  - hostname: simpatik.bonebolangokab.go.id
+    service: http://localhost:8000
+    originRequest:
+      noTLSVerify: true
+      connectTimeout: 30s
+
+  # Ingress rule penutup (Catch-all 404 wajib ada di baris paling bawah)
+  - service: http_status:404

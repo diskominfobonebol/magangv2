@@ -1,16 +1,35 @@
 /* File CSS Khusus Background Keseluruhan Sistem (Plug-and-Play Reusable)
-   Pengaturan background gradasi biru muda (#93C5FD) -> pink muda (#F9A8D4)
+   Pengaturan background gradasi putih (#FFFFFF) -> hijau (#198754) diagonal 135deg
    Berlaku untuk semua jenis user, semua menu & sub-menu. */
 
 :root {
-    --bg-grad-blue-light: #93C5FD;   /* Biru Muda */
-    --bg-grad-pink-light: #F9A8D4;   /* Pink Muda */
-    --bg-grad-white-soft: #FFFFFF;   /* Putih Netral */
+    --bg-from: #FFFFFF;              /* Putih */
+    --bg-to: #E8F5EF;                /* Mint Lembut #E8F5EF */
+    --btn-primary-bg: #146C43;       /* Hijau Tua */
+    --btn-primary-hover: #0F5132;    /* Hijau Sangat Tua */
+    --btn-primary-text: #FFFFFF;     /* Teks Putih */
+    --btn-accent-bg: #F59E0B;        /* Amber */
+    --btn-accent-hover: #D97706;     /* Amber Tua */
+    --btn-accent-text: #172554;      /* Teks Navy */
 }
 
 /* Class Utama Wrapper Background Sistem */
 .app-background, body.app-background {
-    background: linear-gradient(135deg, rgba(147, 197, 253, 0.45) 0%, rgba(255, 255, 255, 0.95) 50%, rgba(249, 168, 212, 0.45) 100%) !important;
-    background-attachment: fixed !important;
+    background: #E8F5EF !important;
     min-height: 100vh;
+}
+
+/* Sidebar #024d43e6 & Navbar #FFFFFF */
+.bg-sidebar-gradient {
+    background: #024d43e6 !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08) !important;
+}
+
+.bg-header-gradient {
+    background: #FFFFFF !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
 }

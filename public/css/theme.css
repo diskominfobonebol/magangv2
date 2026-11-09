@@ -1,26 +1,35 @@
 /* File CSS Khusus Tema Warna Sistem Aset & Magang / Sinosip */
 :root {
-    --color-primary: #3B82F6;       /* Biru Utama: Tombol, link, ikon */
-    --color-primary-hover: #2563EB; /* Biru Hover */
-    --color-primary-active: #1D4ED8;/* Biru Active */
-    --color-blue-light: #93C5FD;    /* Biru Muda: Background/gradasi */
-    --color-blue-subtle: #DBEAFE;   /* Biru Pastel */
+    --color-primary: #198754;       /* Hijau Aksi & Penanda */
+    --color-primary-hover: #146C43; /* Hijau Hover */
+    --color-primary-active: #0F5132;/* Hijau Active */
+    --color-accent: #F59E0B;        /* Amber: Aksen & CTA */
+    --color-accent-hover: #D97706;  /* Amber Hover */
+    --color-accent-text: #172554;   /* Navy */
+    --bg-from: #FFFFFF;             /* Putih */
+    --bg-to: #E8F5EF;               /* Mint Lembut #E8F5EF */
+    --color-green-light: #D1E7DD;   /* Hijau Muda Latar */
+    --color-green-border: #A3CFBB;  /* Hijau Border */
+    --color-green-dark: #0F5132;    /* Hijau Tua Teks & Akses Gradasi */
+    --color-green-darker: #0A3622;  /* Hijau Paling Tua */
+    --color-focus-ring: #198754;    /* Focus Ring */
+    --color-blue-light: #D1E7DD;    /* Pemetaan kompatibilitas: Biru Muda -> Hijau Muda */
+    --color-blue-subtle: #D1E7DD;   /* Pemetaan kompatibilitas */
     --color-white: #FFFFFF;         /* Putih: Card & background */
-    --color-pink: #EC4899;          /* Pink: Aksen & CTA */
+    --color-pink: #EC4899;          /* Pink */
     --color-pink-hover: #DB2777;    /* Pink Hover */
-    --color-pink-light: #F9A8D4;    /* Pink Muda: Background/gradasi */
+    --color-pink-light: #F9A8D4;    /* Pink Muda */
     --color-pink-subtle: #FCE7F3;   /* Pink Pastel */
     --color-navy: #172554;          /* Navy: Judul & teks utama */
     --color-navy-light: #1E3A8A;    /* Navy Muda */
     --color-navy-subtle: #E0E7FF;   /* Navy Pastel */
-    --bg-grad-blue-light: #93C5FD;  /* Biru Muda */
-    --bg-grad-pink-light: #F9A8D4;  /* Pink Muda */
     --bg-grad-white-soft: #FFFFFF;  /* Putih Netral */
-}
-
-/* Global x-cloak to prevent Alpine.js flicker */
-[x-cloak] {
-    display: none !important;
+    --sidebar-bg-from: #024d43e6;
+    --sidebar-bg-to: #024d43e6;
+    --sidebar-text: #D1E7DD;
+    --sidebar-active-bg: rgba(255, 255, 255, 0.18);
+    --sidebar-active-border: rgba(255, 255, 255, 0.35);
+    --sidebar-border: rgba(255, 255, 255, 0.15);
 }
 
 /* Global Font Setting */
@@ -30,43 +39,43 @@ body {
 
 /* 1. Background Sistem Utama (Plug-and-Play Reusable) */
 .app-background, body.app-background {
-    background: linear-gradient(135deg, rgba(147, 197, 253, 0.45) 0%, rgba(255, 255, 255, 0.95) 50%, rgba(249, 168, 212, 0.45) 100%) !important;
-    background-attachment: fixed !important;
+    background: #E8F5EF !important;
     min-height: 100vh;
 }
 
-/* 2. Sidebar Gradient (Rich Navy to Deep Blue) */
+/* 2. Sidebar (#024d43e6 Deep Dark Teal) */
 .bg-sidebar-gradient {
-    background: linear-gradient(180deg, var(--color-navy) 0%, #1E3A8A 55%, #1E1B4B 100%) !important;
-    box-shadow: 4px 0 25px rgba(23, 37, 84, 0.18);
+    background: #024d43e6 !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08) !important;
 }
 
 /* Sidebar Menu States */
 .sidebar-link {
-    color: rgba(226, 232, 240, 0.8) !important;
+    color: var(--sidebar-text) !important;
     transition: all 0.2s ease-in-out;
 }
 
 .sidebar-link:hover {
     color: #FFFFFF !important;
-    background: rgba(255, 255, 255, 0.08) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
     transform: translateX(3px);
 }
 
 .sidebar-link-active {
     color: #FFFFFF !important;
-    background: linear-gradient(90deg, rgba(59, 130, 246, 0.35) 0%, rgba(236, 72, 153, 0.18) 100%) !important;
-    border-left: 3.5px solid #3B82F6 !important;
-    font-weight: 600 !important;
-    box-shadow: 0 4px 12px rgba(23, 37, 84, 0.25);
+    background: var(--sidebar-active-bg) !important;
+    border: 1px solid var(--sidebar-active-border) !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 12px rgba(10, 54, 34, 0.35);
 }
 
-/* 3. Card Components Styling (Enhanced Soft Shadow, Clean Border & Hover Effects) */
+/* 3. Card Components Styling (Solid White Card, Clean Border & Soft Shadow) */
 .bg-card-gradient, .card-soft {
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(239, 246, 255, 0.65) 50%, rgba(253, 242, 248, 0.65) 100%) !important;
-    border: 1px solid rgba(147, 197, 253, 0.45) !important;
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
     border-radius: 1.5rem !important;
-    box-shadow: 0 10px 25px -5px rgba(23, 37, 84, 0.07), 0 4px 12px -2px rgba(23, 37, 84, 0.03);
+    box-shadow: 0 10px 25px -5px rgba(23, 37, 84, 0.05), 0 4px 12px -2px rgba(23, 37, 84, 0.02) !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -76,24 +85,25 @@ body {
 
 .card-interactive:hover {
     transform: translateY(-3px);
-    box-shadow: 0 16px 32px -6px rgba(59, 130, 246, 0.15), 0 8px 16px -4px rgba(236, 72, 153, 0.1);
-    border-color: rgba(59, 130, 246, 0.6) !important;
+    box-shadow: 0 16px 32px -6px rgba(20, 108, 67, 0.15), 0 8px 16px -4px rgba(245, 158, 11, 0.1);
+    border-color: rgba(20, 108, 67, 0.6) !important;
 }
 
-/* 4. Modal Container Gradient */
+/* 4. Modal Container Solid White */
 .bg-modal-gradient {
-    background: linear-gradient(145deg, #FFFFFF 0%, rgba(239, 246, 255, 0.95) 50%, rgba(253, 242, 248, 0.95) 100%) !important;
+    background: #FFFFFF !important;
     border-radius: 1.5rem !important;
-    border: 1px solid rgba(147, 197, 253, 0.45) !important;
+    border: 1px solid #E2E8F0 !important;
     box-shadow: 0 25px 50px -12px rgba(23, 37, 84, 0.25) !important;
 }
 
-/* 5. Header Bar Glassmorphism Gradient */
+/* 5. Header Bar (#FFFFFF Pure White Clean) */
 .bg-header-gradient {
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.88) 100%) !important;
+    background: #FFFFFF !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
-    border-bottom: 1px solid rgba(147, 197, 253, 0.35) !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
 }
 
 /* 6. Form Input Seragam */
@@ -115,8 +125,8 @@ body {
 
 .form-input:focus {
     outline: none !important;
-    border-color: #3B82F6 !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+    border-color: #198754 !important;
+    box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.25) !important;
 }
 
 .form-label {
@@ -129,15 +139,15 @@ body {
     letter-spacing: 0.025em !important;
 }
 
-/* 7. Buttons: Primary, Pink, Gradient, Secondary, Outline, Disabled */
+/* 7. Buttons: Primary, Accent/Pink, Gradient, Secondary, Outline, Disabled */
 .btn-pill-primary, .btn-primary {
-    background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%) !important;
+    background: #146C43 !important;
     color: #FFFFFF !important;
     border: none !important;
     border-radius: 9999px !important;
     font-weight: 700 !important;
     transition: all 0.3s ease !important;
-    box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.35) !important;
+    box-shadow: 0 4px 14px 0 rgba(20, 108, 67, 0.35) !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -150,54 +160,56 @@ body {
 
 .btn-pill-primary:hover, .btn-primary:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 6px 20px 0 rgba(59, 130, 246, 0.45) !important;
-    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    box-shadow: 0 6px 20px 0 rgba(20, 108, 67, 0.45) !important;
+    background: #0F5132 !important;
 }
 
 .btn-pill-primary:active, .btn-primary:active {
     transform: translateY(0) !important;
-    box-shadow: 0 2px 8px 0 rgba(59, 130, 246, 0.3) !important;
-    background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%) !important;
+    box-shadow: 0 2px 8px 0 rgba(20, 108, 67, 0.3) !important;
+    background: #0B3D26 !important;
 }
 
-.btn-pill-pink, .btn-pink {
-    background: linear-gradient(135deg, #EC4899 0%, #D946EF 100%) !important;
-    color: #FFFFFF !important;
+.btn-pill-pink, .btn-pink, .btn-pill-accent, .btn-accent {
+    background: #F59E0B !important;
+    color: #172554 !important;
     border: none !important;
     border-radius: 9999px !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
     transition: all 0.3s ease !important;
-    box-shadow: 0 4px 14px 0 rgba(236, 72, 153, 0.35) !important;
+    box-shadow: 0 4px 14px 0 rgba(245, 158, 11, 0.35) !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
 }
 
-.btn-pink:not(.btn-pill-pink) {
+.btn-pink:not(.btn-pill-pink), .btn-accent:not(.btn-pill-accent) {
     border-radius: 0.75rem !important;
 }
 
-.btn-pill-pink:hover, .btn-pink:hover {
+.btn-pill-pink:hover, .btn-pink:hover, .btn-pill-accent:hover, .btn-accent:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 6px 20px 0 rgba(236, 72, 153, 0.45) !important;
-    background: linear-gradient(135deg, #DB2777 0%, #C026D3 100%) !important;
+    box-shadow: 0 6px 20px 0 rgba(245, 158, 11, 0.45) !important;
+    background: #D97706 !important;
+    color: #172554 !important;
 }
 
-.btn-pill-pink:active, .btn-pink:active {
+.btn-pill-pink:active, .btn-pink:active, .btn-pill-accent:active, .btn-accent:active {
     transform: translateY(0) !important;
-    box-shadow: 0 2px 8px 0 rgba(236, 72, 153, 0.3) !important;
-    background: linear-gradient(135deg, #BE185D 0%, #A21CAF 100%) !important;
+    box-shadow: 0 2px 8px 0 rgba(245, 158, 11, 0.3) !important;
+    background: #B45309 !important;
+    color: #172554 !important;
 }
 
 .btn-pill-gradient, .btn-gradient {
-    background: linear-gradient(135deg, #3B82F6 0%, #EC4899 100%) !important;
+    background: #146C43 !important;
     color: #FFFFFF !important;
     border: none !important;
     border-radius: 9999px !important;
     font-weight: 700 !important;
     transition: all 0.3s ease !important;
-    box-shadow: 0 4px 16px 0 rgba(59, 130, 246, 0.3) !important;
+    box-shadow: 0 4px 16px 0 rgba(20, 108, 67, 0.3) !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -210,20 +222,20 @@ body {
 
 .btn-pill-gradient:hover, .btn-gradient:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 6px 22px 0 rgba(236, 72, 153, 0.4) !important;
-    filter: brightness(1.05) !important;
+    box-shadow: 0 6px 22px 0 rgba(20, 108, 67, 0.45) !important;
+    background: #0F5132 !important;
 }
 
 .btn-pill-gradient:active, .btn-gradient:active {
     transform: translateY(0) !important;
-    filter: brightness(0.95) !important;
+    background: #0B3D26 !important;
 }
 
 /* Secondary & Outline Buttons */
 .btn-pill-secondary, .btn-secondary, .btn-outline {
     background-color: rgba(255, 255, 255, 0.95) !important;
     color: #172554 !important;
-    border: 1px solid rgba(147, 197, 253, 0.6) !important;
+    border: 1px solid rgba(163, 207, 187, 0.8) !important;
     border-radius: 9999px !important;
     font-weight: 600 !important;
     transition: all 0.2s ease-in-out !important;
@@ -239,11 +251,11 @@ body {
 }
 
 .btn-pill-secondary:hover, .btn-secondary:hover, .btn-outline:hover {
-    background-color: #EFF6FF !important;
-    color: #3B82F6 !important;
-    border-color: #3B82F6 !important;
+    background-color: #D1E7DD !important;
+    color: #0F5132 !important;
+    border-color: #198754 !important;
     transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
+    box-shadow: 0 4px 12px rgba(25, 135, 84, 0.15) !important;
 }
 
 /* Disabled state */
@@ -255,12 +267,12 @@ button:disabled, .btn-disabled, input:disabled {
 }
 
 /* 8. Pastel Icon Containers & Icon Buttons */
-.icon-circle-blue {
+.icon-circle-blue, .icon-circle-green {
     width: 2.75rem;
     height: 2.75rem;
     border-radius: 9999px;
-    background-color: #DBEAFE !important;
-    color: #3B82F6 !important;
+    background-color: #D1E7DD !important;
+    color: #0F5132 !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -304,9 +316,9 @@ button:disabled, .btn-disabled, input:disabled {
 }
 
 .btn-icon-action:hover {
-    color: #3B82F6;
-    background-color: #EFF6FF;
-    border-color: rgba(147, 197, 253, 0.4);
+    color: #198754;
+    background-color: #D1E7DD;
+    border-color: rgba(163, 207, 187, 0.8);
     transform: translateY(-1px);
 }
 
@@ -318,11 +330,11 @@ button:disabled, .btn-disabled, input:disabled {
 
 /* 9. Progress Bars */
 .progress-bar-primary {
-    background: linear-gradient(90deg, #3B82F6 0%, #2563EB 100%) !important;
+    background: linear-gradient(90deg, #198754 0%, #146C43 100%) !important;
 }
 
 .progress-bar-gradient {
-    background: linear-gradient(90deg, #3B82F6 0%, #EC4899 100%) !important;
+    background: linear-gradient(90deg, #198754 0%, #0F5132 100%) !important;
 }
 
 .progress-track {
@@ -332,10 +344,10 @@ button:disabled, .btn-disabled, input:disabled {
 }
 
 /* 10. Badges & Status Pills */
-.badge-blue {
-    background-color: #DBEAFE !important;
-    color: #1E40AF !important;
-    border: 1px solid rgba(147, 197, 253, 0.6) !important;
+.badge-blue, .badge-green-soft {
+    background-color: #D1E7DD !important;
+    color: #0F5132 !important;
+    border: 1px solid #A3CFBB !important;
 }
 
 .badge-pink {
@@ -350,34 +362,16 @@ button:disabled, .btn-disabled, input:disabled {
     border: 1px solid rgba(147, 197, 253, 0.4) !important;
 }
 
-.badge-green {
-    background-color: #DCFCE7 !important;
-    color: #15803D !important;
-    border: 1px solid rgba(134, 239, 172, 0.6) !important;
-}
-
-.badge-amber, .badge-yellow {
-    background-color: #FEF3C7 !important;
-    color: #92400E !important;
-    border: 1px solid rgba(253, 230, 138, 0.6) !important;
-}
-
-.badge-rose, .badge-red {
-    background-color: #FFE4E6 !important;
-    color: #9F1239 !important;
-    border: 1px solid rgba(254, 205, 211, 0.6) !important;
-}
-
 .badge-gradient {
-    background: linear-gradient(135deg, rgba(147, 197, 253, 0.3) 0%, rgba(249, 168, 212, 0.3) 100%) !important;
+    background: #F1F5F9 !important;
     color: #172554 !important;
-    border: 1px solid rgba(147, 197, 253, 0.5) !important;
+    border: 1px solid #CBD5E1 !important;
 }
 
 /* 11. Tabs Styling */
 .tab-btn-active {
-    border-bottom: 2.5px solid #3B82F6 !important;
-    color: #3B82F6 !important;
+    border-bottom: 2.5px solid #198754 !important;
+    color: #198754 !important;
     font-weight: 700 !important;
 }
 
@@ -398,19 +392,19 @@ button:disabled, .btn-disabled, input:disabled {
 .bg-primary { background-color: var(--color-primary) !important; }
 .text-pink-accent { color: var(--color-pink) !important; }
 .bg-pink-accent { background-color: var(--color-pink) !important; }
-.text-blue-light { color: var(--color-blue-light) !important; }
-.text-pink-light { color: var(--color-pink-light) !important; }
-.text-blue-subtle { color: var(--color-blue-subtle) !important; }
-.bg-blue-subtle { background-color: var(--color-blue-subtle) !important; }
-.text-pink-subtle { color: var(--color-pink-subtle) !important; }
-.bg-pink-subtle { background-color: var(--color-pink-subtle) !important; }
-.text-navy-subtle { color: var(--color-navy-subtle) !important; }
-.bg-navy-subtle { background-color: var(--color-navy-subtle) !important; }
-
-/* 13. Styling Cetak Label QR Code & Dokumen */
-@media print {
-    .no-print, aside, header, nav, [role="navigation"] {
-        display: none !important;
-    }
+/* 13. Custom Scrollbar Universal */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
 }
-
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #F1F5F9;
+    border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #A3CFBB;
+    border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #198754;
+}
