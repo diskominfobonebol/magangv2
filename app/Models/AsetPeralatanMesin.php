@@ -12,30 +12,6 @@ class AsetPeralatanMesin extends Model
     protected $table = 'aset_peralatan_mesin';
     protected $primaryKey = 'id';
 
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($model) {
-            if (empty($model->no_reg_pemda) && empty($model->no_reg_kominfo)) {
-                $year = date('Y');
-                $prefix = "REG-{$year}-";
-
-                $lastAsset = static::where('no_reg_pemda', 'LIKE', "{$prefix}%")
-                    ->orderByRaw("CAST(SUBSTRING_INDEX(no_reg_pemda, '-', -1) AS UNSIGNED) DESC")
-                    ->first();
-
-                if ($lastAsset && preg_match('/-(\d+)$/', $lastAsset->no_reg_pemda, $matches)) {
-                    $nextNumber = ((int) $matches[1]) + 1;
-                } else {
-                    $nextNumber = 1;
-                }
-
-                $model->no_reg_pemda = $prefix . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
-            }
-        });
-    }
-
     protected $fillable = [
         'no_reg_pemda',
         'no_reg_kominfo',
@@ -49,16 +25,150 @@ class AsetPeralatanMesin extends Model
         'no_polisi',
         'no_bpkb',
         'kondisi',
+        'persentase_kondisi',
         'keterangan_lokasi_unit',
+        'foto',
         'no_sk_bast',
         'tgl_mulai_pinjam',
         'tgl_selesai_pinjam',
     ];
 
+    protected static function booted()
+    {
+        static::deleting(function ($aset) {
+            if (!empty($aset->foto)) {
+                app(\App\Services\AsetImageService::class)->delete($aset->foto);
+            }
+        });
+    }
+
+    /**
+     * URL foto aset ukuran utama (800px) - menggunakan path relatif agar aman di host/tunnel mana pun
+     */
+    public function getFotoUrlAttribute(): ?string
+    {
+        if (empty($this->foto)) {
+            return null;
+        }
+
+        return '/storage/' . ltrim($this->foto, '/');
+    }
+
+    /**
+     * URL thumbnail foto aset (150px) untuk tabel web - menggunakan path relatif
+     */
+    public function getThumbUrlAttribute(): ?string
+    {
+        if (empty($this->foto)) {
+            return null;
+        }
+
+        $service = app(\App\Services\AsetImageService::class);
+        $thumbPath = $service->getThumbPath($this->foto);
+
+        return '/storage/' . ltrim($thumbPath, '/');
+    }
+
+    /**
+     * Dimensi tampil thumbnail proporsional sesuai rasio asli (maks 110x90 px)
+     * Digunakan untuk atribut width dan height eksplisit pada DomPDF dan tabel web
+     */
+    public function getThumbDimensionsAttribute(): ?array
+    {
+        if (empty($this->foto)) {
+            return null;
+        }
+
+        $service = app(\App\Services\AsetImageService::class);
+        $thumbPath = $service->getThumbPath($this->foto);
+        $disk = config('aset.foto.storage_disk', 'public');
+
+        $fullPath = null;
+        if ($thumbPath && \Illuminate\Support\Facades\Storage::disk($disk)->exists($thumbPath)) {
+            $fullPath = \Illuminate\Support\Facades\Storage::disk($disk)->path($thumbPath);
+        } elseif (\Illuminate\Support\Facades\Storage::disk($disk)->exists($this->foto)) {
+            $fullPath = \Illuminate\Support\Facades\Storage::disk($disk)->path($this->foto);
+        }
+
+        if (!$fullPath || !file_exists($fullPath)) {
+            return null;
+        }
+
+        $size = @getimagesize($fullPath);
+        if (!$size || $size[0] <= 0 || $size[1] <= 0) {
+            return ['width' => 90, 'height' => 70];
+        }
+
+        $origW = $size[0];
+        $origH = $size[1];
+
+        $maxW = 110;
+        $maxH = 90;
+
+        // Skala proporsional agar muat dalam batas maksimal tanpa terdistorsi
+        $ratio = min($maxW / $origW, $maxH / $origH, 1.0);
+        $calcW = max(1, (int) round($origW * $ratio));
+        $calcH = max(1, (int) round($origH * $ratio));
+
+        return [
+            'width'  => $calcW,
+            'height' => $calcH,
+        ];
+    }
+
+    /**
+     * Data URI thumbnail lokal base64 untuk disematkan di DomPDF tanpa HTTP request eksternal
+     */
+    public function getThumbDataUriAttribute(): ?string
+    {
+        if (empty($this->foto)) {
+            return null;
+        }
+
+        $service = app(\App\Services\AsetImageService::class);
+        $thumbPath = $service->getThumbPath($this->foto);
+
+        $disk = config('aset.foto.storage_disk', 'public');
+        if (\Illuminate\Support\Facades\Storage::disk($disk)->exists($thumbPath)) {
+            $fullPath = \Illuminate\Support\Facades\Storage::disk($disk)->path($thumbPath);
+            $content = @file_get_contents($fullPath);
+            if ($content) {
+                return 'data:image/jpeg;base64,' . base64_encode($content);
+            }
+        } elseif (\Illuminate\Support\Facades\Storage::disk($disk)->exists($this->foto)) {
+            $fullPath = \Illuminate\Support\Facades\Storage::disk($disk)->path($this->foto);
+            $content = @file_get_contents($fullPath);
+            if ($content) {
+                return 'data:image/jpeg;base64,' . base64_encode($content);
+            }
+        }
+
+        return null;
+    }
+
     protected $casts = [
         'tgl_mulai_pinjam'   => 'date',
         'tgl_selesai_pinjam' => 'date',
+        'persentase_kondisi' => 'integer',
     ];
+
+    /**
+     * Dapatkan konfigurasi standar untuk kondisi aset saat ini
+     */
+    public function getKondisiConfigAttribute(): array
+    {
+        $all = config('aset.kondisi_standar', []);
+        return $all[$this->kondisi] ?? [
+            'color'      => '#64748B',
+            'bg_light'   => '#F1F5F9',
+            'text_dark'  => '#334155',
+            'border'     => '#CBD5E1',
+            'badge_css'  => 'background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1;',
+            'label'      => $this->kondisi,
+            'label_pdf'  => $this->kondisi,
+            'rentang_label' => '-',
+        ];
+    }
 
     /**
      * Dapatkan URL publik yang dapat diakses dari jaringan LAN (HP/Tablet) untuk scan QR Code
@@ -70,23 +180,15 @@ class AsetPeralatanMesin extends Model
     }
 
     /**
-     * Alias kompatibilitas
-     */
-    public function getQrUrlAttribute(): string
-    {
-        return $this->public_url;
-    }
-
-    /**
      * Helper pembentuk URL publik aset yang ramah jaringan lokal (LAN/WiFi)
      */
-    public static function generatePublicUrl(?string $noReg): string
+    public static function generatePublicUrl(?string $noRegPemda): string
     {
-        if (empty($noReg)) {
+        if (empty($noRegPemda)) {
             return url('/aset');
         }
 
-        $encodedId = urlencode($noReg);
+        $encodedId = urlencode($noRegPemda);
         $request = request();
         $host = $request ? $request->getHost() : null;
 
@@ -112,5 +214,13 @@ class AsetPeralatanMesin extends Model
         }
 
         return url('/aset/' . $encodedId);
+    }
+
+    /**
+     * Relasi ke seluruh Berita Acara (BAST / Penerimaan Barang) terkait aset ini
+     */
+    public function beritaAcaras()
+    {
+        return $this->hasMany(BeritaAcara::class, 'aset_id')->orderBy('tanggal', 'desc');
     }
 }

@@ -2,112 +2,99 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Rekap SIMPATIK - Diskominfo</title>
+    <title>Laporan Rekapitulasi Kondisi Barang KOMTARA - Diskominfo</title>
     <style>
+        @page {
+            size: a4 landscape;
+            margin: 10mm 12mm;
+        }
         body {
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 11px;
+            font-size: 9.5px;
             color: #172554;
-            line-height: 1.4;
+            line-height: 1.35;
             margin: 0;
-            padding: 15px;
+            padding: 0;
         }
-        .header {
+        .header-title {
             text-align: center;
-            border-bottom: 2px solid #172554;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
+            margin: 10px 0 12px 0;
         }
-        .header h2 {
+        .header-title h3 {
             margin: 0;
-            font-size: 16px;
+            font-size: 13px;
             color: #172554;
             text-transform: uppercase;
-        }
-        .header h3 {
-            margin: 3px 0 0 0;
-            font-size: 13px;
-            color: #3B82F6;
-        }
-        .header p {
-            margin: 2px 0 0 0;
-            font-size: 10px;
-            color: #64748b;
+            font-weight: bold;
+            letter-spacing: 0.5px;
         }
         .meta-info {
-            margin-bottom: 15px;
-            font-size: 10px;
+            margin-bottom: 10px;
+            font-size: 9px;
+            color: #475569;
         }
         .meta-info table {
             width: 100%;
         }
-        .rekap-cards {
-            width: 100%;
-            margin-bottom: 15px;
-            border-collapse: collapse;
-        }
-        .rekap-cards td {
-            width: 20%;
-            padding: 8px;
-            text-align: center;
-            border: 1px solid #cbd5e1;
-            background-color: #f8fafc;
-        }
-        .rekap-cards .card-title {
-            font-size: 9px;
-            color: #64748b;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-        .rekap-cards .card-value {
-            font-size: 14px;
-            font-weight: bold;
-            color: #172554;
-            margin-top: 3px;
-        }
+
+        /* Main Data Table */
         .data-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-top: 6px;
+        }
+        .data-table thead {
+            display: table-header-group;
+        }
+        .data-table tr {
+            page-break-inside: avoid;
         }
         .data-table th {
             background-color: #172554;
             color: #ffffff;
-            font-size: 9px;
+            font-size: 8.5px;
             text-transform: uppercase;
-            padding: 6px 5px;
+            padding: 6px 4px;
             border: 1px solid #172554;
             text-align: left;
+            letter-spacing: 0.3px;
         }
         .data-table td {
-            padding: 5px;
+            padding: 4px 5px;
             border: 1px solid #cbd5e1;
-            font-size: 10px;
+            font-size: 8.8px;
+            vertical-align: middle;
         }
         .data-table tr:nth-child(even) {
             background-color: #f8fafc;
         }
+
+        /* Badges */
         .badge {
             display: inline-block;
-            padding: 2px 6px;
+            padding: 2px 5px;
             border-radius: 4px;
-            font-size: 9px;
+            font-size: 7.8px;
             font-weight: bold;
+            line-height: 1.15;
+            text-align: center;
         }
-        .badge-baik { background-color: #e0e7ff; color: #3730a3; }
-        .badge-rusak-ringan { background-color: #fef9c3; color: #854d0e; }
-        .badge-rusak-berat { background-color: #fee2e2; color: #991b1b; }
-        .badge-hilang { background-color: #f1f5f9; color: #334155; }
-        .footer {
-            margin-top: 30px;
+        .badge-baik { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .badge-rusak-ringan { background-color: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+        .badge-rusak-berat { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .badge-hilang { background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+
+        /* Signature block */
+        .footer, .signature-block {
+            margin-top: 20px;
             width: 100%;
+            page-break-inside: avoid;
         }
         .footer table {
             width: 100%;
         }
         .footer td {
-            text-align: center;
-            font-size: 10px;
+            font-size: 9px;
         }
     </style>
 </head>
@@ -115,93 +102,108 @@
 
     @include('components.kop-surat', ['isPdf' => true])
 
-    <div style="text-align: center; margin-bottom: 12px;">
-        <h3 style="margin: 0; font-size: 13px; color: #172554; text-transform: uppercase; font-weight: bold;">LAPORAN REKAPITULASI KONDISI BARANG & PERALATAN MESIN</h3>
+    <div class="header-title">
+        <h3>LAPORAN REKAPITULASI KONDISI BARANG & PERALATAN MESIN</h3>
     </div>
 
-    <div class="meta-info" style="text-align: right; margin-bottom: 10px;">
-        <span style="font-size: 9.5px; color: #475569;"><strong>Tanggal Cetak:</strong> {{ date('d F Y') }}</span>
+    <div class="meta-info">
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="text-align: left;">
+                    @php
+                        $bulanList = [
+                            '1' => 'Januari', '2' => 'Februari', '3' => 'Maret', '4' => 'April',
+                            '5' => 'Mei', '6' => 'Juni', '7' => 'Juli', '8' => 'Agustus',
+                            '9' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
+                        ];
+                        $namaBulan = ($filterBulan && $filterBulan !== 'all' && isset($bulanList[$filterBulan])) ? $bulanList[$filterBulan] : 'Semua Bulan';
+                        $tahunStr = ($filterTahun && $filterTahun !== 'all') ? $filterTahun : 'Semua Tahun';
+                    @endphp
+                    <strong>Periode:</strong> {{ $namaBulan }} {{ $tahunStr }}
+                </td>
+                <td style="text-align: right;">
+                    <strong>Tanggal Cetak:</strong> {{ \Carbon\Carbon::now()->translatedFormat('d F Y') }}
+                </td>
+            </tr>
+        </table>
     </div>
 
-    <!-- Ringkasan Statistik Rekap -->
-    <table class="rekap-cards">
-        <tr>
-            <td>
-                <div class="card-title">Kondisi Baik</div>
-                <div class="card-value" style="color: #4338ca;">{{ $rekap['Baik'] }}</div>
-            </td>
-            <td>
-                <div class="card-title">Rusak Ringan</div>
-                <div class="card-value" style="color: #854d0e;">{{ $rekap['Rusak Ringan'] }}</div>
-            </td>
-            <td>
-                <div class="card-title">Rusak Berat</div>
-                <div class="card-value" style="color: #991b1b;">{{ $rekap['Rusak Berat'] }}</div>
-            </td>
-            <td>
-                <div class="card-title">Hilang</div>
-                <div class="card-value" style="color: #334155;">{{ $rekap['Hilang'] }}</div>
-            </td>
-            <td>
-                <div class="card-title">Total Aset</div>
-                <div class="card-value" style="color: #3B82F6;">{{ $rekap['Total'] }}</div>
-            </td>
-        </tr>
-    </table>
-
-    <!-- Tabel Detail Data Aset -->
+    <!-- 2. Tabel Detail Data Aset (Mengikuti Filter Aktif) -->
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 4%;">No</th>
-                <th style="width: 13%;">No. Reg Pemda</th>
-                <th style="width: 13%;">No. Reg KOMINFO</th>
+                <th style="width: 3%; text-align: center;">No</th>
+                <th style="width: 14%;">No. Reg Pemda</th>
                 <th style="width: 16%;">Jenis Barang</th>
-                <th style="width: 16%;">Merek / Tipe</th>
+                <th style="width: 18%;">Merek / Tipe</th>
                 <th style="width: 16%;">Penanggung Jawab</th>
-                <th style="width: 8%;">Tahun</th>
-                <th style="width: 14%;">Kondisi</th>
+                <th style="width: 5%; text-align: center;">Tahun</th>
+                <th style="width: 17%; text-align: center;">Kondisi</th>
+                <th style="width: 11%; text-align: center;">Gambar</th>
             </tr>
         </thead>
         <tbody>
             @forelse($aset as $index => $item)
+            @php
+                $pct = $item->persentase_kondisi ?? match($item->kondisi) {
+                    'Baik' => 100,
+                    'Rusak Ringan' => 65,
+                    'Rusak Berat' => 25,
+                    'Hilang' => 0,
+                    default => 100,
+                };
+            @endphp
             <tr>
                 <td style="text-align: center;">{{ $index + 1 }}</td>
                 <td><strong>{{ $item->no_reg_pemda ?: '-' }}</strong></td>
-                <td><strong style="color: #2563eb;">{{ $item->no_reg_kominfo ?: '-' }}</strong></td>
                 <td>{{ $item->jenis_barang }}</td>
-                <td>{{ $item->merek_tipe }}</td>
+                <td>{{ $item->merek_tipe ?: '-' }}</td>
                 <td>{{ $item->penanggung_jawab ?: 'Belum Ditentukan' }}</td>
                 <td style="text-align: center;">{{ $item->tahun ?: '-' }}</td>
-                <td>
+                <td style="text-align: center;">
                     @if($item->kondisi === 'Baik')
-                        <span class="badge badge-baik">Baik</span>
+                        <span class="badge badge-baik">Baik ({{ $pct }}%)</span>
                     @elseif($item->kondisi === 'Rusak Ringan')
-                        <span class="badge badge-rusak-ringan">Rusak Ringan</span>
+                        <span class="badge badge-rusak-ringan">Rusak Ringan ({{ $pct }}%)</span>
                     @elseif($item->kondisi === 'Rusak Berat')
-                        <span class="badge badge-rusak-berat">Rusak Berat</span>
+                        <span class="badge badge-rusak-berat">Rusak Berat ({{ $pct }}%)</span>
+                    @elseif($item->kondisi === 'Hilang')
+                        <span class="badge badge-hilang" style="white-space: nowrap;">Belum Ditemukan Keberadaannya (0%)</span>
                     @else
-                        <span class="badge badge-hilang">{{ $item->kondisi }}</span>
+                        <span class="badge badge-hilang">{{ $item->kondisi }} ({{ $pct }}%)</span>
+                    @endif
+                </td>
+                <td style="text-align: center; vertical-align: middle;">
+                    @if($item->thumb_data_uri)
+                        @php
+                            $dim = $item->thumb_dimensions ?? ['width' => 90, 'height' => 70];
+                        @endphp
+                        <img src="{{ $item->thumb_data_uri }}" width="{{ $dim['width'] }}" height="{{ $dim['height'] }}" alt="Foto" style="display: block; margin: 0 auto; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    @else
+                        <span style="color: #94a3b8; font-weight: bold; font-size: 11px;">-</span>
                     @endif
                 </td>
             </tr>
             @empty
             <tr>
-                <td colspan="8" style="text-align: center; padding: 15px; color: #94a3b8;">Tidak ada data aset pada periode ini.</td>
+                <td colspan="8" style="text-align: center; padding: 15px; color: #94a3b8;">
+                    Tidak ada data aset pada kriteria filter ini.
+                </td>
             </tr>
             @endforelse
         </tbody>
     </table>
 
+    <!-- 3. Blok Tanda Tangan Resmi -->
     <div class="footer">
         <table>
             <tr>
-                <td style="width: 60%;"></td>
-                <td style="width: 40%;">
-                    <p>Suwawa, {{ date('d F Y') }}</p>
-                    <p style="margin-bottom: 50px;"><strong>Pengelola Barang / Aset</strong></p>
-                    <p><u>_______________________</u></p>
-                    <p>NIP. .....................................</p>
+                <td style="width: 65%;"></td>
+                <td style="width: 35%; text-align: center;">
+                    <p style="margin: 0;">Suwawa, {{ \Carbon\Carbon::now()->translatedFormat('d F Y') }}</p>
+                    <p style="margin: 4px 0 50px 0;"><strong>Pengelola Barang / Aset</strong></p>
+                    <p style="margin: 0;"><u>_______________________</u></p>
+                    <p style="margin: 3px 0 0 0;">NIP. .....................................</p>
                 </td>
             </tr>
         </table>

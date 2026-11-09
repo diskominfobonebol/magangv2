@@ -17,7 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
             'force.password.reset' => \App\Http\Middleware\ForcePasswordReset::class,
+            'password.changed' => \App\Http\Middleware\EnsurePasswordChanged::class,
             'two_factor' => \App\Http\Middleware\EnsureTwoFactorEnrolled::class,
+            '2fa.enrolled' => \App\Http\Middleware\EnsureTwoFactorEnrolled::class,
+            '2fa.verified' => \App\Http\Middleware\EnsureTwoFactorAuthenticated::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
